@@ -1,0 +1,81 @@
+/*
+ * Tailwind entry point.
+ * Kept as plain CSS because Sass cannot resolve the `@import "tailwindcss"` package path.
+ * Application-level theming lives in `styles.scss`, which is loaded after this file.
+ */
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Tajawal', 'Cairo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fredoka', 'Marhey', 'Tajawal', ui-sans-serif, system-ui, sans-serif;
+
+  /* Cream canvas — sampled from the Bubble Hope brand site */
+  --color-cream-50: #fffcf5;
+  --color-cream-100: #fefaf4;
+  --color-cream-200: #fef5ed;
+  --color-cream-300: #fde8d4;
+  --color-cream-400: #f9d4b0;
+
+  /* Brand orange */
+  --color-orange-300: #f8a46a;
+  --color-orange-400: #f28240;
+  --color-orange-500: #f26b09;
+  --color-orange-600: #d85a06;
+  --color-orange-700: #b14000;
+
+  /* Brand teal */
+  --color-teal-300: #53d3d4;
+  --color-teal-400: #3dc8cf;
+  --color-teal-500: #2bb6af;
+  --color-teal-600: #1a9a96;
+  --color-teal-700: #147a78;
+
+  /* Navy ink for readable text on cream */
+  --color-ink-950: #121820;
+  --color-ink-900: #1a2433;
+  --color-ink-800: #2a3544;
+  --color-ink-700: #3a4554;
+  --color-ink-600: #556070;
+  --color-ink-500: #6b7380;
+  --color-ink-400: #8b93a0;
+  --color-ink-300: #b8bfc8;
+
+  --radius-xl2: 1.5rem;
+
+  --shadow-card: 0 18px 50px -24px rgb(26 36 51 / 0.18);
+  --shadow-orange: 0 16px 36px -14px rgb(242 107 9 / 0.45);
+
+  --animate-float: float 8s ease-in-out infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -24px, 0) scale(1.04);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}

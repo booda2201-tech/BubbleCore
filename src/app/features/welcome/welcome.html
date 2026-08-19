@@ -1,0 +1,128 @@
+<section class="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+  <div class="orb h-72 w-72 bg-orange-500/40 -top-16 start-1/4 animate-float"></div>
+  <div
+    class="orb h-80 w-80 bg-teal-400/40 bottom-0 end-1/5 animate-float [animation-delay:-3s]"
+  ></div>
+  <div class="orb h-48 w-48 bg-cream-400/80 top-1/3 end-1/4 animate-float [animation-delay:-5s]"></div>
+
+  <div class="glass-panel animate-rise relative z-10 w-full max-w-lg p-8 sm:p-10">
+    <!-- Hidden admin trigger: three consecutive taps on the logo -->
+    <header
+      class="logo-trigger flex flex-col items-center gap-3 text-center select-none"
+      (click)="onLogoTap()"
+      title="Bubble Hope"
+    >
+      <div class="logo-mark">
+        <img
+          src="assets/logo.png"
+          alt="Bubble Hope"
+          width="512"
+          height="315"
+          fetchpriority="high"
+        />
+      </div>
+      <p class="eyebrow">تجربة تقييم بابل هوب</p>
+    </header>
+
+    <div class="hairline my-7"></div>
+
+    <div class="text-center">
+      <h2 class="text-xl font-bold text-ink-900 sm:text-2xl">أهلاً بك في بابل هوب</h2>
+      <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
+        رأيك يصنع الفرق. شاركنا تجربتك في أقل من دقيقة واحصل على خدمة أفضل في زيارتك القادمة.
+      </p>
+    </div>
+
+    <form class="mt-8 space-y-5" [formGroup]="form" (ngSubmit)="start()" novalidate>
+      <div>
+        <label class="field-label" for="name">الاسم</label>
+        <input
+          id="name"
+          type="text"
+          class="glass-input"
+          [class.is-invalid]="invalid('name')"
+          formControlName="name"
+          placeholder="اكتب اسمك الكريم"
+          autocomplete="name"
+        />
+        @if (invalid('name')) {
+          <p class="field-error">من فضلك أدخل اسمك (حرفين على الأقل)</p>
+        }
+      </div>
+
+      <div>
+        <label class="field-label" for="phone">رقم الموبايل</label>
+        <input
+          id="phone"
+          type="tel"
+          inputmode="tel"
+          class="glass-input ltr-nums text-start"
+          [class.is-invalid]="invalid('phone')"
+          formControlName="phone"
+          placeholder="01xxxxxxxxx"
+          autocomplete="tel"
+        />
+        @if (invalid('phone')) {
+          <p class="field-error">من فضلك أدخل رقم موبايل صحيح</p>
+        }
+      </div>
+
+      <button type="submit" class="btn-primary w-full text-base">
+        <span>ابدأ التقييم</span>
+        <span aria-hidden="true">←</span>
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-[0.7rem] leading-relaxed text-ink-400">
+      بياناتك محفوظة بسرية تامة ولن تُستخدم إلا لتحسين جودة الخدمة.
+    </p>
+  </div>
+
+  @if (adminGateOpen()) {
+    <div
+      class="fixed inset-0 z-50 grid place-items-center bg-ink-900/40 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="admin-gate-title"
+      (click)="closeAdminGate()"
+    >
+      <div class="glass-panel animate-rise w-full max-w-sm p-7" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between gap-4">
+          <h3 id="admin-gate-title" class="text-lg font-bold text-ink-900">دخول المسؤول</h3>
+          <button
+            type="button"
+            class="grid h-8 w-8 place-items-center rounded-full text-ink-400 transition hover:bg-cream-200 hover:text-ink-900"
+            aria-label="إغلاق"
+            (click)="closeAdminGate()"
+          >
+            ✕
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-ink-500">أدخل كلمة مرور لوحة التحكم للمتابعة.</p>
+
+        <input
+          #passwordField
+          type="password"
+          class="glass-input ltr-nums mt-5 text-start"
+          [class.is-invalid]="!!adminError()"
+          [value]="adminPassword()"
+          (input)="adminPassword.set($any($event.target).value); adminError.set('')"
+          (keydown.enter)="submitAdminPassword()"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          aria-label="كلمة مرور المسؤول"
+        />
+        @if (adminError()) {
+          <p class="field-error">{{ adminError() }}</p>
+        }
+
+        <div class="mt-6 flex gap-3">
+          <button type="button" class="btn-primary flex-1" (click)="submitAdminPassword()">
+            فتح اللوحة
+          </button>
+          <button type="button" class="btn-ghost" (click)="closeAdminGate()">إلغاء</button>
+        </div>
+      </div>
+    </div>
+  }
+</section>

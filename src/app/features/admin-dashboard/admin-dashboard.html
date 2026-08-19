@@ -1,0 +1,284 @@
+<section class="relative min-h-dvh overflow-hidden px-3 py-5 sm:px-8 sm:py-8">
+  <div class="orb h-96 w-96 bg-orange-500/25 -top-32 start-1/3 animate-float"></div>
+  <div
+    class="orb h-80 w-80 bg-teal-400/25 bottom-0 end-0 animate-float [animation-delay:-5s]"
+  ></div>
+
+  <div class="animate-rise relative z-10 mx-auto w-full max-w-7xl">
+    <!-- Header -->
+    <header
+      class="glass-panel flex flex-col gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-6"
+    >
+      <div class="flex items-center gap-3 sm:gap-4">
+        <img
+          class="admin-logo"
+          src="assets/logo.png"
+          alt="Bubble Hope"
+          width="512"
+          height="315"
+        />
+        <div class="min-w-0">
+          <p class="eyebrow">لوحة التحكم</p>
+          <h1 class="font-display truncate text-lg font-bold text-ink-900 sm:text-2xl">
+            تقييمات العملاء
+          </h1>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3">
+        <button
+          type="button"
+          class="btn-primary w-full sm:w-auto"
+          (click)="exportCsv()"
+          [disabled]="!total()"
+        >
+          <span aria-hidden="true">⇩</span>
+          <span>تصدير Excel</span>
+        </button>
+        <button type="button" class="btn-ghost w-full sm:w-auto" (click)="logout()">
+          <span aria-hidden="true">⏻</span>
+          <span>خروج</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI cards -->
+    <div class="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 xl:grid-cols-4">
+      <article class="glass-card glass-hover kpi-card">
+        <p class="kpi-label">إجمالي التقييمات</p>
+        <p class="kpi-value ltr-nums">{{ total() | number }}</p>
+        <p class="kpi-note">تقييم مسجّل في النظام</p>
+      </article>
+
+      <article class="glass-card glass-hover kpi-card">
+        <p class="kpi-label">متوسط التقييم</p>
+        <p class="kpi-value ltr-nums text-hope">{{ averageRating() | number: '1.1-1' }}</p>
+        <div class="mt-2">
+          <app-star-rating
+            [value]="averageStars()"
+            [readOnly]="true"
+            size="sm"
+            ariaLabel="متوسط التقييم"
+          />
+        </div>
+      </article>
+
+      <article class="glass-card glass-hover kpi-card">
+        <p class="kpi-label">نسبة الترشيح</p>
+        <p class="kpi-value ltr-nums">{{ recommendRate() | number: '1.0-0' }}%</p>
+        <p class="kpi-note">قالوا نعم هيرشّحوا بابل هوب</p>
+      </article>
+
+      <article class="glass-card glass-hover kpi-card">
+        <p class="kpi-label">السعر مناسب</p>
+        <p class="kpi-value ltr-nums">{{ priceFairRate() | number: '1.0-0' }}%</p>
+        <p class="kpi-note">حاسين إن السعر مناسب للجودة</p>
+      </article>
+    </div>
+
+    <!-- Insights -->
+    <div class="mt-4 grid gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-3">
+      <div class="glass-card glass-hover lg:col-span-2">
+        <h2 class="text-base font-bold text-ink-900">توزيع التقييم العام</h2>
+        <div class="mt-4 space-y-3 sm:mt-5">
+          @for (bar of distribution(); track bar.stars) {
+            <div class="flex items-center gap-3">
+              <span class="ltr-nums w-9 shrink-0 text-xs text-ink-500">{{ bar.stars }} ★</span>
+              <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-cream-300">
+                <div class="bar-fill h-full rounded-full" [style.width.%]="bar.percent"></div>
+              </div>
+              <span class="ltr-nums w-8 shrink-0 text-end text-xs text-ink-400">{{
+                bar.count
+              }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="hairline my-5"></div>
+
+        <h3 class="text-sm font-bold text-ink-800">متوسط كل بند</h3>
+        <div class="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          @for (item of questionAverages(); track item.id) {
+            <div class="glass-soft rounded-2xl px-2 py-3 text-center sm:px-4">
+              <span class="block text-xl sm:text-2xl" aria-hidden="true">{{ item.icon }}</span>
+              <p class="mt-1 text-[0.68rem] leading-tight text-ink-500 sm:text-xs">
+                {{ item.label }}
+              </p>
+              <p class="ltr-nums mt-1 text-lg font-bold text-orange-500 sm:text-xl">
+                {{ item.average | number: '1.1-1' }}
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="glass-card glass-hover">
+        <h2 class="text-base font-bold text-ink-900">الترشيح لبابل هوب</h2>
+        <ul class="mt-4 space-y-3 sm:mt-5">
+          @for (item of recommendBreakdown(); track item.id) {
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs">
+                <span class="text-ink-700">{{ item.label }}</span>
+                <span class="ltr-nums text-ink-400">
+                  {{ item.count }} · {{ item.percent | number: '1.0-0' }}%
+                </span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-cream-300">
+                <div
+                  class="h-full rounded-full"
+                  [class]="'tone-' + item.tone"
+                  [style.width.%]="item.percent"
+                ></div>
+              </div>
+            </li>
+          }
+        </ul>
+
+        <div class="hairline my-5"></div>
+
+        <h2 class="text-base font-bold text-ink-900">مناسبة السعر</h2>
+        <ul class="mt-4 space-y-3 sm:mt-5">
+          @for (item of priceBreakdown(); track item.id) {
+            <li>
+              <div class="mb-1 flex items-center justify-between text-xs">
+                <span class="text-ink-700">{{ item.label }}</span>
+                <span class="ltr-nums text-ink-400">
+                  {{ item.count }} · {{ item.percent | number: '1.0-0' }}%
+                </span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-cream-300">
+                <div
+                  class="h-full rounded-full"
+                  [class]="'tone-' + item.tone"
+                  [style.width.%]="item.percent"
+                ></div>
+              </div>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+
+    <!-- Reviews: table on desktop, stacked cards on mobile -->
+    <div class="glass-panel mt-4 overflow-hidden p-4 sm:mt-6 sm:p-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div class="flex items-baseline justify-between gap-3">
+          <h2 class="text-base font-bold text-ink-900">تقييمات العملاء</h2>
+          <span class="ltr-nums text-xs text-ink-400 sm:hidden">{{ rows().length }}</span>
+        </div>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="filter-scroll flex gap-2">
+            @for (option of starOptions; track option) {
+              <button
+                type="button"
+                class="pill shrink-0 whitespace-nowrap !px-3 !py-1.5 !text-xs"
+                [class.pill-active]="starFilter() === option"
+                (click)="starFilter.set(option)"
+              >
+                {{ starLabel(option) }}
+              </button>
+            }
+          </div>
+          <input
+            type="search"
+            class="glass-input w-full !py-2 text-sm sm:!w-56"
+            [value]="search()"
+            (input)="onSearch($event)"
+            placeholder="ابحث بالاسم أو الرقم…"
+            aria-label="بحث في التقييمات"
+          />
+        </div>
+      </div>
+
+      <div class="table-scroll mt-4 sm:mt-5">
+        <table class="data-table w-full text-sm sm:min-w-[64rem]">
+          <thead>
+            <tr>
+              <th>العميل</th>
+              <th>الموبايل</th>
+              <th>العام</th>
+              <th>المشروب</th>
+              <th>الديزرت</th>
+              <th>السرعة</th>
+              <th>السعر</th>
+              <th>يرشّحنا</th>
+              <th>الاقتراح</th>
+              <th>التاريخ</th>
+              <th class="text-center">إجراء</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td class="cell-name font-medium text-ink-900" data-label="العميل">
+                  {{ row.name }}
+                </td>
+                <td class="ltr-nums text-ink-500" data-label="الموبايل">{{ row.phone || '—' }}</td>
+                <td data-label="التقييم العام">
+                  <app-star-rating
+                    [value]="row.rating"
+                    [readOnly]="true"
+                    size="sm"
+                    ariaLabel="التقييم العام"
+                  />
+                </td>
+                <td class="ltr-nums text-ink-700 sm:text-center" data-label="المشروب">
+                  {{ row.ratings['drink'] || '—' }}
+                </td>
+                <td class="ltr-nums text-ink-700 sm:text-center" data-label="الديزرت">
+                  {{ row.ratings['dessert'] || '—' }}
+                </td>
+                <td class="ltr-nums text-ink-700 sm:text-center" data-label="السرعة">
+                  {{ row.ratings['speed'] || '—' }}
+                </td>
+                <td data-label="السعر مناسب؟">
+                  <span class="chip" [class]="'chip-' + priceTone(row.priceValue)">
+                    {{ priceLabel(row.priceValue) }}
+                  </span>
+                </td>
+                <td data-label="يرشّحنا؟">
+                  <span class="chip" [class]="'chip-' + recommendTone(row.recommend)">
+                    {{ recommendLabel(row.recommend) }}
+                  </span>
+                </td>
+                <td class="cell-suggestion text-ink-500 sm:max-w-xs" data-label="الاقتراح">
+                  <span class="line-clamp-2">{{ row.suggestion || '—' }}</span>
+                </td>
+                <td class="ltr-nums text-ink-400 sm:whitespace-nowrap" data-label="التاريخ">
+                  {{ row.createdAt | date: 'yyyy/MM/dd HH:mm' }}
+                </td>
+                <td class="cell-actions sm:text-center">
+                  <button
+                    type="button"
+                    class="row-delete"
+                    (click)="remove(row.id)"
+                    [attr.aria-label]="'حذف تقييم ' + row.name"
+                  >
+                    <span class="row-delete-icon" aria-hidden="true">✕</span>
+                    <span class="row-delete-text">حذف التقييم</span>
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr class="empty-row">
+                <td colspan="11" class="empty-cell py-12 text-center sm:py-14">
+                  <p class="text-ink-400">لا توجد تقييمات مطابقة.</p>
+                  @if (!total()) {
+                    <button type="button" class="btn-ghost mt-4" (click)="seedDemo()">
+                      تحميل بيانات تجريبية
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="mt-5 text-center text-[0.7rem] text-ink-300 sm:mt-6">
+      BubbleCore © لوحة تحكم داخلية — البيانات محفوظة محلياً على هذا الجهاز.
+    </p>
+  </div>
+</section>

@@ -1,1 +1,365 @@
-/* You can add global styles to this file, and also import other style files */
+/* BubbleCore global theme — Bubble Hope brand: cream, orange, teal.
+   Loaded after `tailwind.css`, so the `@layer` blocks below slot into
+   Tailwind's cascade layers and stay overridable by utility classes. */
+
+$orange: #f26b09;
+$teal: #2bb6af;
+
+:root {
+  --bc-glass-tint: rgb(255 255 255 / 0.78);
+  --bc-glass-tint-strong: rgb(255 255 255 / 0.92);
+  --bc-glass-border: rgb(242 107 9 / 0.1);
+  --bc-blur: 18px;
+  --bc-shadow-glass: 0 18px 50px -24px rgb(26 36 51 / 0.18);
+  --bc-shadow-orange: 0 16px 36px -14px rgb(242 107 9 / 0.45);
+  --bc-page-gradient:
+    radial-gradient(920px 480px at 92% -8%, rgb(61 200 207 / 0.28), transparent 58%),
+    radial-gradient(820px 420px at 4% 0%, rgb(242 107 9 / 0.22), transparent 55%),
+    linear-gradient(180deg, #fff5ea 0%, #fffcf5 42%, #fefaf4 100%);
+}
+
+@mixin glass($tint: var(--bc-glass-tint), $blur: 18px) {
+  position: relative;
+  background: $tint;
+  backdrop-filter: blur($blur) saturate(140%);
+  -webkit-backdrop-filter: blur($blur) saturate(140%);
+  border: 1px solid var(--bc-glass-border);
+  box-shadow: var(--bc-shadow-glass);
+}
+
+@mixin btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.3s ease,
+    background 0.3s ease,
+    border-color 0.3s ease,
+    opacity 0.2s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: #fffcf5;
+    background-image: var(--bc-page-gradient);
+    background-attachment: fixed;
+    color: #1a2433;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.01em;
+  }
+
+  [dir='rtl'] {
+    text-align: right;
+  }
+
+  .ltr-nums {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  ::selection {
+    background: rgb(242 107 9 / 0.22);
+    color: #1a2433;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(242 107 9 / 0.06);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(242 107 9 / 0.28);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(242 107 9 / 0.5);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(242 107 9 / 0.7);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .glass {
+    @include glass;
+  }
+
+  .glass-strong {
+    @include glass(var(--bc-glass-tint-strong), 26px);
+  }
+
+  .glass-soft {
+    @include glass(rgb(255 252 245 / 0.72), 12px);
+  }
+
+  .glass-card {
+    @include glass;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-inline: 0;
+      top: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(255 255 255 / 0.9),
+        rgb(242 107 9 / 0.35),
+        transparent
+      );
+      pointer-events: none;
+    }
+  }
+
+  .glass-panel {
+    @include glass(var(--bc-glass-tint-strong), 26px);
+    border-radius: 1.75rem;
+  }
+
+  .glass-hover {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.35s ease,
+      box-shadow 0.35s ease;
+
+    &:hover {
+      transform: translateY(-4px);
+      border-color: rgb(242 107 9 / 0.28);
+      box-shadow: 0 24px 56px -22px rgb(26 36 51 / 0.22);
+    }
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgb(26 36 51 / 0.68);
+  }
+
+  .glass-input {
+    width: 100%;
+    padding: 0.9rem 1.1rem;
+    border-radius: 1rem;
+    background: #fff;
+    border: 1px solid rgb(242 107 9 / 0.16);
+    color: #1a2433;
+    font: inherit;
+    transition:
+      border-color 0.25s ease,
+      background 0.25s ease,
+      box-shadow 0.25s ease;
+
+    &::placeholder {
+      color: rgb(26 36 51 / 0.35);
+    }
+
+    &:hover {
+      border-color: rgb(242 107 9 / 0.32);
+    }
+
+    &:focus {
+      outline: none;
+      background: #fff;
+      border-color: rgb(242 107 9 / 0.7);
+      box-shadow: 0 0 0 4px rgb(242 107 9 / 0.12);
+    }
+
+    &.is-invalid {
+      border-color: rgb(196 70 70 / 0.7);
+      box-shadow: 0 0 0 4px rgb(196 70 70 / 0.1);
+    }
+  }
+
+  .field-error {
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
+    color: #c44646;
+  }
+
+  .btn {
+    @include btn-base;
+  }
+
+  .btn-gold,
+  .btn-primary {
+    @include btn-base;
+    background: linear-gradient(135deg, #f8a46a 0%, #{$orange} 48%, #d85a06 100%);
+    color: #fff;
+    box-shadow: var(--bc-shadow-orange);
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 20px 44px -14px rgb(242 107 9 / 0.6);
+    }
+  }
+
+  .btn-ghost {
+    @include btn-base;
+    background: #fff;
+    border-color: rgb(26 36 51 / 0.1);
+    color: #1a2433;
+
+    &:hover:not(:disabled) {
+      background: #fef5ed;
+      border-color: rgb(242 107 9 / 0.28);
+      color: #{$orange};
+    }
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 1.15rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid rgb(26 36 51 / 0.1);
+    color: rgb(26 36 51 / 0.78);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+      transform 0.2s ease,
+      background 0.25s ease,
+      border-color 0.25s ease,
+      color 0.25s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      border-color: rgb(242 107 9 / 0.35);
+      color: #{$orange};
+    }
+  }
+
+  .pill-active {
+    background: linear-gradient(135deg, #f8a46a, #{$orange});
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 10px 24px -12px rgb(242 107 9 / 0.7);
+  }
+
+  // Small read-only labels used in tables and summaries.
+  .chip {
+    display: inline-flex;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: rgb(254 245 237 / 0.9);
+    border: 1px solid rgb(26 36 51 / 0.08);
+    color: rgb(26 36 51 / 0.7);
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .chip-positive {
+    background: rgb(43 182 175 / 0.12);
+    border-color: rgb(43 182 175 / 0.35);
+    color: #147a78;
+  }
+
+  .chip-neutral {
+    background: rgb(242 107 9 / 0.12);
+    border-color: rgb(242 107 9 / 0.3);
+    color: #b14000;
+  }
+
+  .chip-negative {
+    background: rgb(196 70 70 / 0.1);
+    border-color: rgb(196 70 70 / 0.28);
+    color: #a33a3a;
+  }
+
+  .text-gold-gradient,
+  .text-brand {
+    background: linear-gradient(120deg, #{$teal} 0%, #3dc8cf 40%, #{$orange} 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-bubble {
+    color: #{$teal};
+  }
+
+  .text-hope {
+    color: #{$orange};
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #{$orange};
+    font-weight: 700;
+  }
+
+  .hairline {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(242 107 9 / 0.22), transparent);
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

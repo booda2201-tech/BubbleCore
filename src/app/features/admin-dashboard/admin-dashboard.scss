@@ -1,0 +1,282 @@
+// Mobile breakpoint aligned with Tailwind's `sm` (640px).
+$mobile: 639px;
+
+.admin-logo {
+  width: 5.25rem;
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgb(242 107 9 / 0.18));
+
+  @media (min-width: 640px) {
+    width: 7.5rem;
+  }
+}
+
+.kpi-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: rgb(26 36 51 / 0.5);
+
+  @media (min-width: 640px) {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+  }
+}
+
+.kpi-value {
+  margin-top: 0.35rem;
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #1a2433;
+
+  @media (min-width: 640px) {
+    font-size: 2.25rem;
+  }
+}
+
+.kpi-note {
+  margin-top: 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: rgb(26 36 51 / 0.4);
+
+  @media (min-width: 640px) {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: $mobile) {
+  .kpi-card {
+    padding: 1rem;
+    border-radius: 1.15rem;
+  }
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, #f28240, #f26b09 60%, #3dc8cf);
+  box-shadow: 0 0 12px rgb(242 107 9 / 0.3);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 2px;
+}
+
+// Star filters scroll sideways instead of wrapping on narrow screens.
+.filter-scroll {
+  @media (max-width: $mobile) {
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+.table-scroll {
+  @media (min-width: 640px) {
+    overflow-x: auto;
+  }
+}
+
+.data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+
+  th {
+    padding: 0.75rem 1rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgb(26 36 51 / 0.45);
+    text-align: start;
+    white-space: nowrap;
+    border-bottom: 1px solid rgb(242 107 9 / 0.12);
+  }
+
+  td {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid rgb(26 36 51 / 0.06);
+  }
+
+  tbody tr {
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: rgb(254 245 237 / 0.8);
+    }
+
+    &:last-child td {
+      border-bottom: 0;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mobile: each review becomes a card with inline labels instead of a wide table.
+// ---------------------------------------------------------------------------
+@media (max-width: $mobile) {
+  .data-table {
+    display: block;
+    width: 100%;
+
+    thead {
+      display: none;
+    }
+
+    tbody,
+    tr,
+    td {
+      display: block;
+      width: 100%;
+    }
+
+    tbody tr {
+      margin-bottom: 0.75rem;
+      padding: 0.25rem 0.9rem 0.6rem;
+      border: 1px solid rgb(26 36 51 / 0.08);
+      border-radius: 1.15rem;
+      background: #fff;
+      box-shadow: 0 12px 28px -22px rgb(26 36 51 / 0.45);
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      &:hover {
+        background: #fff;
+      }
+    }
+
+    td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px dashed rgb(26 36 51 / 0.08);
+      text-align: start;
+
+      &::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: rgb(26 36 51 / 0.42);
+      }
+
+      &:last-child {
+        border-bottom: 0;
+      }
+    }
+
+    // Customer name acts as the card title.
+    td.cell-name {
+      padding-top: 0.85rem;
+      padding-bottom: 0.65rem;
+      font-size: 1.02rem;
+      font-weight: 700;
+
+      &::before {
+        content: none;
+      }
+    }
+
+    td.cell-suggestion {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.3rem;
+      max-width: none;
+      line-height: 1.7;
+    }
+
+    td.cell-actions {
+      padding-top: 0.7rem;
+
+      &::before {
+        content: none;
+      }
+    }
+
+    tr.empty-row {
+      padding: 0;
+    }
+
+    td.empty-cell {
+      display: block;
+      border-bottom: 0;
+
+      &::before {
+        content: none;
+      }
+    }
+  }
+}
+
+.tone-positive {
+  background: linear-gradient(90deg, rgb(43 182 175 / 0.7), #2bb6af);
+}
+
+.tone-neutral {
+  background: linear-gradient(90deg, #f28240, #f26b09);
+}
+
+.tone-negative {
+  background: linear-gradient(90deg, rgb(196 70 70 / 0.7), #c44646);
+}
+
+.row-delete {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-inline: auto;
+  border: 1px solid rgb(26 36 51 / 0.1);
+  border-radius: 999px;
+  background: #fff;
+  color: rgb(26 36 51 / 0.4);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    color: #c44646;
+    background: rgb(196 70 70 / 0.08);
+    border-color: rgb(196 70 70 / 0.4);
+  }
+}
+
+.row-delete-text {
+  display: none;
+}
+
+// Touch targets need to be tappable, so the icon button becomes a labelled button.
+@media (max-width: $mobile) {
+  .row-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    height: auto;
+    min-height: 2.6rem;
+    border-radius: 0.9rem;
+    background: rgb(196 70 70 / 0.06);
+    border-color: rgb(196 70 70 / 0.22);
+    color: #a33a3a;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .row-delete-text {
+    display: inline;
+  }
+
+  .row-delete-icon {
+    font-size: 0.75rem;
+  }
+}

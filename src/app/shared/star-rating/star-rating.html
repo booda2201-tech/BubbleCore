@@ -1,0 +1,44 @@
+<div class="inline-flex flex-col gap-2">
+  <div
+    class="star-row inline-flex items-center gap-1.5"
+    [class.is-readonly]="readOnly()"
+    [attr.role]="readOnly() ? 'img' : 'slider'"
+    [attr.aria-label]="ariaLabel()"
+    [attr.aria-valuemin]="readOnly() ? null : 0"
+    [attr.aria-valuemax]="readOnly() ? null : 5"
+    [attr.aria-valuenow]="readOnly() ? null : value()"
+    [attr.aria-valuetext]="hint()"
+    [attr.tabindex]="readOnly() ? null : 0"
+    (keydown)="onKeydown($event)"
+    (mouseleave)="clearPreview()"
+  >
+    @for (star of stars; track star) {
+      <button
+        type="button"
+        class="star"
+        [class]="'star-' + size()"
+        [class.star-filled]="star <= active()"
+        [disabled]="readOnly()"
+        [attr.aria-label]="star + ' من 5'"
+        (click)="select(star)"
+        (mouseenter)="preview(star)"
+        (focus)="preview(star)"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 2.6l2.86 5.8 6.4.93-4.63 4.51 1.09 6.37L12 17.2l-5.72 3.01 1.09-6.37L2.74 9.33l6.4-.93L12 2.6z"
+          />
+        </svg>
+      </button>
+    }
+  </div>
+
+  @if (showHint()) {
+    <span
+      class="text-xs font-medium text-orange-500/80 transition-opacity"
+      [class.opacity-40]="!active()"
+    >
+      {{ hint() }}
+    </span>
+  }
+</div>

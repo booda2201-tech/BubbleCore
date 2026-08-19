@@ -1,0 +1,20 @@
+.logo-trigger {
+  cursor: pointer;
+
+  &:active .logo-mark {
+    transform: scale(0.96);
+  }
+}
+
+.logo-mark {
+  width: min(15rem, 70%);
+  transition: transform 0.25s ease;
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    // The brand mark ships on a transparent background; a soft glow lifts it off the cream canvas.
+    filter: drop-shadow(0 12px 24px rgb(242 107 9 / 0.22));
+  }
+}
