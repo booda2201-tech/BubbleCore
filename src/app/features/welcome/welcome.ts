@@ -3,6 +3,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AdminAuth } from '../../core/admin-auth';
 import { FeedbackStore } from '../../core/feedback-store';
+import { ChoiceOption } from '../../core/models';
+import { SurveyApi } from '../../core/survey-api';
+import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 
 /** Consecutive logo taps required to reveal the admin gate. */
 const SECRET_TAPS = 3;
@@ -11,7 +14,7 @@ const TAP_WINDOW_MS = 900;
 
 @Component({
   selector: 'app-welcome',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ModernSelectComponent],
   templateUrl: './welcome.html',
   styleUrl: './welcome.scss',
   host: {
@@ -22,6 +25,7 @@ export class WelcomeComponent {
   private readonly router = inject(Router);
   private readonly store = inject(FeedbackStore);
   private readonly auth = inject(AdminAuth);
+  private readonly api = inject(SurveyApi);
 
   private readonly passwordField = viewChild<ElementRef<HTMLInputElement>>('passwordField');
 
@@ -33,9 +37,16 @@ export class WelcomeComponent {
     phone: ['', [Validators.required, Validators.pattern(/^[0-9+\s-]{9,15}$/)]],
   });
 
+  protected readonly branchOptions = signal<ChoiceOption[]>([]);
+  protected readonly selectedBranch = signal<string | null>(null);
+
   protected readonly adminGateOpen = signal(false);
   protected readonly adminPassword = signal('');
   protected readonly adminError = signal('');
+
+  constructor() {
+    void this.loadSurvey();
+  }
 
   protected start(): void {
     if (this.form.invalid) {
@@ -44,7 +55,12 @@ export class WelcomeComponent {
     }
 
     const { name, phone } = this.form.getRawValue();
-    this.store.customer.set({ name: name.trim(), phone: phone.trim() });
+    const branchId = this.selectedBranch() ? Number(this.selectedBranch()) : null;
+    this.store.customer.set({
+      name: name.trim(),
+      phone: phone.trim(),
+      branchId: Number.isFinite(branchId) ? branchId : null,
+    });
     this.router.navigate(['/feedback']);
   }
 
@@ -84,5 +100,24 @@ export class WelcomeComponent {
   protected invalid(control: 'name' | 'phone'): boolean {
     const field = this.form.controls[control];
     return field.invalid && (field.touched || field.dirty);
+  }
+
+  private async loadSurvey(): Promise<void> {
+    try {
+      const survey = await this.api.getPublicSurvey();
+      this.store.survey.set(survey);
+      this.branchOptions.set(
+        [...(survey.branches ?? [])]
+          .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+          .map((branch) => ({
+            id: String(branch.id),
+            label: branch.name,
+            icon: '📍',
+            tone: 'neutral',
+          })),
+      );
+    } catch {
+      this.branchOptions.set([]);
+    }
   }
 }

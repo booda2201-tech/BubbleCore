@@ -67,6 +67,20 @@
         }
       </div>
 
+      @if (branchOptions().length) {
+        <div>
+          <label class="field-label" id="branch-label">الفرع</label>
+          <app-modern-select
+            class="mt-1 block"
+            [options]="branchOptions()"
+            placeholder="اختياري — اختر الفرع"
+            ariaLabel="الفرع"
+            [value]="selectedBranch()"
+            (valueChange)="selectedBranch.set($event)"
+          />
+        </div>
+      }
+
       <button type="submit" class="btn-primary w-full text-base">
         <span>ابدأ التقييم</span>
         <span aria-hidden="true">←</span>

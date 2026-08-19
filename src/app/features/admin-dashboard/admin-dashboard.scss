@@ -248,6 +248,11 @@ $mobile: 639px;
     background: rgb(196 70 70 / 0.08);
     border-color: rgb(196 70 70 / 0.4);
   }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }
 
 .row-delete-text {
