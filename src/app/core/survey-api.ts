@@ -122,7 +122,7 @@ function toApiError(error: unknown): ApiRequestError {
   if (error instanceof HttpErrorResponse) {
     if (error.status === 0) {
       return new ApiRequestError(
-        'تعذر الاتصال بالسيرفر. تأكد إن الـ API شغال على localhost:5134',
+        'تعذر الاتصال بالسيرفر. تأكد إن الـ API شغال.',
         0,
       );
     }
