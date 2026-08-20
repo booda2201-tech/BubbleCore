@@ -7,6 +7,7 @@ import {
   Kpi,
   QuestionDetails,
   ResponseAnswer,
+  SaveSurvey,
   SurveyAnalytics,
   SurveyDetails,
   SurveyResponseRow,
@@ -151,6 +152,38 @@ export class AdminDashboardComponent {
     return '—';
   }
 
+  /** Notes from the response payload, or from any text answer attached to the evaluation. */
+  protected rowNotes(row: SurveyResponseRow): string {
+    const direct =
+      row.notes?.trim() ||
+      row.comment?.trim() ||
+      row.suggestion?.trim() ||
+      row.feedback?.trim();
+    if (direct) return direct;
+
+    const textAnswers = row.answers
+      .filter((item) => {
+        if (!item.textValue?.trim()) return false;
+        const type = String(item.questionType ?? '').toLowerCase();
+        // API may send "Text", "text", or numeric enum 4.
+        return type === 'text' || type === '4' || type === '';
+      })
+      .map((item) => item.textValue!.trim());
+
+    if (textAnswers.length) return textAnswers.join('\n');
+
+    // Last resort: any answer that only carries free text.
+    const freeText = row.answers.find(
+      (item) =>
+        !!item.textValue?.trim() &&
+        item.ratingValue == null &&
+        item.numberValue == null &&
+        item.selectedOptionId == null &&
+        !(item.selectedOptionTexts?.length),
+    );
+    return freeText?.textValue?.trim() ?? '';
+  }
+
   protected isChoice(question: QuestionDetails): boolean {
     return question.type === 'SingleChoice' || question.type === 'YesNo';
   }
@@ -161,6 +194,11 @@ export class AdminDashboardComponent {
 
   protected isText(question: QuestionDetails): boolean {
     return question.type === 'Text';
+  }
+
+  /** Score/choice questions only — notes are shown in their own block. */
+  protected detailQuestions(): QuestionDetails[] {
+    return this.questions().filter((question) => question.type !== 'Text');
   }
 
   protected openEditor(): void {
@@ -240,7 +278,8 @@ export class AdminDashboardComponent {
       this.surveyTitle.set(survey.title);
 
       const details = await this.api.getSurvey(survey.id);
-      this.applyDetails(details);
+      const ensured = await this.ensureNotesQuestion(details);
+      this.applyDetails(ensured);
 
       await Promise.all([this.loadAnalytics(survey.id), this.loadResponses(survey.id)]);
     } catch (error) {
@@ -248,6 +287,22 @@ export class AdminDashboardComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Notes are submitted as a Text answer. If the survey has no Text question,
+   * past notes were dropped by the API — provision one so new submissions persist.
+   */
+  private async ensureNotesQuestion(details: SurveyDetails): Promise<SurveyDetails> {
+    const hasText = details.questions.some((question) => {
+      const type = String(question.type);
+      return type === 'Text' || type === '4';
+    });
+    if (hasText) return details;
+
+    const saved = await this.api.updateSurvey(details.id, toSaveSurveyWithNotes(details));
+    this.feedback.survey.set(null);
+    return saved;
   }
 
   private applyDetails(details: SurveyDetails): void {
@@ -296,4 +351,61 @@ function errorMessage(error: unknown): string {
 function shortenLabel(value: string, max = 24): string {
   const text = value.trim();
   return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function toSaveSurveyWithNotes(details: SurveyDetails): SaveSurvey {
+  const existing = [...details.questions]
+    .sort((a, b) => a.order - b.order)
+    .map((question, index) => ({
+      id: question.id,
+      key: question.key || `question_${question.id}`,
+      title: question.title,
+      subtitle: question.subtitle,
+      type: question.type,
+      isRequired: question.isRequired,
+      icon: question.icon,
+      order: index + 1,
+      minValue: question.minValue,
+      maxValue: question.maxValue,
+      maxLength: question.maxLength,
+      options: [...question.options]
+        .sort((a, b) => a.order - b.order)
+        .map((option, optionIndex) => ({
+          id: option.id,
+          text: option.text,
+          value: option.value,
+          icon: option.icon,
+          order: optionIndex + 1,
+        })),
+    }));
+
+  return {
+    title: details.title,
+    description: details.description,
+    slug: details.slug,
+    branches: [...details.branches]
+      .sort((a, b) => a.order - b.order)
+      .map((branch, index) => ({
+        id: branch.id,
+        name: branch.name,
+        order: index + 1,
+        isActive: branch.isActive,
+      })),
+    questions: [
+      ...existing,
+      {
+        key: 'customer_notes',
+        title: 'لو حابب تكتب ملاحظة أو اقتراح',
+        subtitle: 'تقرير / ملاحظات العميل',
+        type: 'Text',
+        isRequired: false,
+        icon: null,
+        order: existing.length + 1,
+        minValue: null,
+        maxValue: null,
+        maxLength: 500,
+        options: [],
+      },
+    ],
+  };
 }

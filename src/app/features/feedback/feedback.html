@@ -41,7 +41,11 @@
 
         <div class="mt-4">
           <div class="mb-2 flex items-center justify-between text-[0.7rem] text-ink-400">
-            <span>السؤال {{ step() + 1 }} من {{ totalSteps() }}</span>
+            @if (isNotesStep()) {
+              <span>تدوين الملاحظات</span>
+            } @else {
+              <span>السؤال {{ step() + 1 }} من {{ stepQuestions().length }}</span>
+            }
             <span class="ltr-nums">{{ progress() | number: '1.0-0' }}%</span>
           </div>
           <div class="h-1.5 overflow-hidden rounded-full bg-cream-300">
@@ -50,8 +54,8 @@
         </div>
 
         @if (totalSteps() > 1) {
-          <div class="step-dots mt-4" role="tablist" aria-label="خطوات الأسئلة">
-            @for (question of questions(); track question.id; let i = $index) {
+          <div class="step-dots mt-4" role="tablist" aria-label="خطوات التقييم">
+            @for (question of stepQuestions(); track question.id; let i = $index) {
               <button
                 type="button"
                 class="step-dot"
@@ -63,15 +67,61 @@
                 (click)="goTo(i)"
               ></button>
             }
+            <button
+              type="button"
+              class="step-dot"
+              role="tab"
+              [class.is-active]="isNotesStep()"
+              [class.is-done]="notesStepAnswered()"
+              [attr.aria-selected]="isNotesStep()"
+              aria-label="تدوين الملاحظات"
+              (click)="goTo(totalSteps() - 1)"
+            ></button>
           </div>
         }
       </header>
 
       @for (_ of [step()]; track step()) {
-        @if (currentQuestion(); as question) {
+        @if (isNotesStep()) {
+          <div class="question-stage glass-card q-card glass-hover mt-3 sm:mt-5">
+            <span class="mb-2 block text-center text-3xl sm:text-4xl" aria-hidden="true">📝</span>
+            <div class="text-center">
+              <p class="step-badge">الملاحظات</p>
+              <h2 class="mt-2 text-lg font-bold text-ink-900 sm:text-xl">
+                {{ notesQuestion()?.title || 'لو حابب تكتب ملاحظة أو اقتراح' }}
+                @if (notesQuestion()?.isRequired) {
+                  <span class="text-orange-500"> *</span>
+                }
+              </h2>
+              @if (notesQuestion()?.subtitle; as subtitle) {
+                <p class="mt-2 text-sm text-ink-400">{{ subtitle }}</p>
+              } @else {
+                <p class="mt-2 text-sm text-ink-400">اختياري — كل ملاحظة بنقراها بعناية</p>
+              }
+            </div>
+
+            <textarea
+              rows="5"
+              class="glass-input mt-5 resize-none sm:mt-6"
+              [value]="notes()"
+              [attr.maxlength]="notesMax"
+              (input)="onNotes($event)"
+              placeholder="اكتب ملاحظتك هنا…"
+              aria-label="الملاحظات"
+            ></textarea>
+            <div class="ltr-nums mt-2 text-end text-[0.7rem] text-ink-400">
+              {{ notes().length }} / {{ notesMax }}
+            </div>
+            @if (!notesQuestion()?.isRequired) {
+              <p class="mt-2 text-center text-xs text-ink-400">
+                تقدر تتخطى الخطوة دي وتبعت التقييم مباشرة
+              </p>
+            }
+          </div>
+        } @else if (currentQuestion(); as question) {
           <div
             class="question-stage glass-card q-card glass-hover mt-3 sm:mt-5"
-            [class.text-center]="question.type !== 'Text'"
+            [class.text-center]="true"
           >
             @if (icon(question.icon); as emoji) {
               <span class="mb-2 block text-3xl sm:text-4xl" aria-hidden="true">{{ emoji }}</span>
@@ -111,22 +161,6 @@
                   [attr.max]="question.maxValue"
                   (input)="onNumber(question.id, $event)"
                 />
-              }
-              @case ('Text') {
-                <textarea
-                  rows="5"
-                  class="glass-input mt-5 resize-none sm:mt-6"
-                  [value]="draft(question.id).textValue"
-                  [attr.maxlength]="question.maxLength ?? 500"
-                  (input)="onText(question, $event)"
-                  placeholder="اكتب اقتراحك هنا…"
-                ></textarea>
-                <div class="ltr-nums mt-2 text-end text-[0.7rem] text-ink-400">
-                  {{ draft(question.id).textValue.length }} / {{ question.maxLength ?? 500 }}
-                </div>
-                @if (!question.isRequired) {
-                  <p class="mt-2 text-xs text-ink-400">اختياري — تقدر تتخطاه</p>
-                }
               }
               @default {
                 <div
@@ -195,7 +229,7 @@
         >
           @if (submitting()) {
             <span>جاري الإرسال…</span>
-          } @else if (isLast()) {
+          } @else if (isNotesStep()) {
             <span>إرسال التقييم</span>
             <span aria-hidden="true">←</span>
           } @else {

@@ -48,6 +48,8 @@ export interface SubmitSurveyResponse {
   customerName?: string | null;
   phoneNumber?: string | null;
   branchId?: number | null;
+  /** Optional free-form notes sent with the evaluation. */
+  notes?: string | null;
   answers: SubmitAnswer[];
 }
 
@@ -139,6 +141,11 @@ export interface SurveyResponseRow {
   branchName: string | null;
   averageRating: number | null;
   submittedAt: string;
+  /** Free-form notes submitted with the evaluation (API may use any of these names). */
+  notes?: string | null;
+  comment?: string | null;
+  suggestion?: string | null;
+  feedback?: string | null;
   answers: ResponseAnswer[];
 }
 

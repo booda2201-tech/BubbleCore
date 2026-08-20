@@ -15,6 +15,8 @@ interface AnswerDraft {
   numberValue: number | null;
 }
 
+const NOTES_MAX = 500;
+
 @Component({
   selector: 'app-feedback',
   imports: [StarRatingComponent, DecimalPipe],
@@ -29,6 +31,7 @@ export class FeedbackComponent {
   protected readonly customer = this.store.customer;
   protected readonly survey = this.store.survey;
   protected readonly answers = signal<Record<number, AnswerDraft>>({});
+  protected readonly notes = signal('');
   protected readonly step = signal(0);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
@@ -36,16 +39,32 @@ export class FeedbackComponent {
   protected readonly error = signal('');
   protected readonly submitError = signal('');
   protected readonly stepHint = signal('');
+  protected readonly notesMax = NOTES_MAX;
 
   protected readonly questions = computed(() =>
     [...(this.survey()?.questions ?? [])].sort((a, b) => a.order - b.order),
   );
 
-  protected readonly totalSteps = computed(() => this.questions().length);
+  /** Rating / choice / number steps — text questions are folded into the final notes step. */
+  protected readonly stepQuestions = computed(() =>
+    this.questions().filter((question) => question.type !== 'Text'),
+  );
+
+  /** Prefer an explicit notes/suggestion text question; otherwise the last Text question. */
+  protected readonly notesQuestion = computed(() => {
+    const textQuestions = this.questions().filter((question) => question.type === 'Text');
+    if (!textQuestions.length) return null;
+    const keyed = textQuestions.find((question) => isNotesKey(question.key));
+    return keyed ?? textQuestions[textQuestions.length - 1];
+  });
+
+  protected readonly totalSteps = computed(() => this.stepQuestions().length + 1);
 
   protected readonly currentQuestion = computed(
-    () => this.questions()[this.step()] ?? null,
+    () => this.stepQuestions()[this.step()] ?? null,
   );
+
+  protected readonly isNotesStep = computed(() => this.step() >= this.stepQuestions().length);
 
   protected readonly isFirst = computed(() => this.step() <= 0);
 
@@ -66,9 +85,13 @@ export class FeedbackComponent {
 
   protected readonly canSubmit = computed(() => {
     if (!this.survey() || this.submitting()) return false;
-    return this.questions()
+    const questionsOk = this.stepQuestions()
       .filter((question) => question.isRequired)
       .every((question) => this.isAnswered(question));
+    if (!questionsOk) return false;
+    const notesQuestion = this.notesQuestion();
+    if (notesQuestion?.isRequired && !this.notes().trim()) return false;
+    return true;
   });
 
   /** Progress by current step, not just answered count — clearer for a wizard. */
@@ -79,6 +102,10 @@ export class FeedbackComponent {
   });
 
   protected readonly currentAnswered = computed(() => {
+    if (this.isNotesStep()) {
+      const notesQuestion = this.notesQuestion();
+      return notesQuestion?.isRequired ? this.notes().trim().length > 0 : true;
+    }
     const question = this.currentQuestion();
     return question ? this.isAnswered(question) : false;
   });
@@ -118,11 +145,15 @@ export class FeedbackComponent {
     this.stepHint.set('');
   }
 
-  protected onText(question: PublicQuestion, event: Event): void {
-    const max = question.maxLength ?? 500;
-    const value = (event.target as HTMLTextAreaElement).value.slice(0, max);
-    this.patch(question.id, { textValue: value });
+  protected onNotes(event: Event): void {
+    const value = (event.target as HTMLTextAreaElement).value.slice(0, NOTES_MAX);
+    this.notes.set(value);
     this.stepHint.set('');
+
+    const notesQuestion = this.notesQuestion();
+    if (notesQuestion) {
+      this.patch(notesQuestion.id, { textValue: value });
+    }
   }
 
   protected onNumber(questionId: number, event: Event): void {
@@ -133,6 +164,18 @@ export class FeedbackComponent {
 
   protected goNext(): void {
     this.clearAdvanceTimer();
+
+    if (this.isNotesStep()) {
+      const notesQuestion = this.notesQuestion();
+      if (notesQuestion?.isRequired && !this.notes().trim()) {
+        this.stepHint.set('اكتب ملاحظتك عشان تكمل');
+        return;
+      }
+      this.stepHint.set('');
+      void this.submit();
+      return;
+    }
+
     const question = this.currentQuestion();
     if (!question) return;
 
@@ -142,11 +185,6 @@ export class FeedbackComponent {
     }
 
     this.stepHint.set('');
-    if (this.isLast()) {
-      void this.submit();
-      return;
-    }
-
     this.step.update((value) => Math.min(value + 1, this.totalSteps() - 1));
   }
 
@@ -163,8 +201,8 @@ export class FeedbackComponent {
 
     // Allow jumping back freely; jumping forward only through already-answered required steps.
     if (index > this.step()) {
-      for (let i = 0; i < index; i++) {
-        const question = this.questions()[i];
+      for (let i = 0; i < Math.min(index, this.stepQuestions().length); i++) {
+        const question = this.stepQuestions()[i];
         if (question?.isRequired && !this.isAnswered(question)) {
           this.step.set(i);
           this.stepHint.set('جاوب على الأسئلة المطلوبة بالترتيب');
@@ -179,12 +217,17 @@ export class FeedbackComponent {
 
   protected async submit(): Promise<void> {
     if (!this.canSubmit()) {
-      const firstMissing = this.questions().findIndex(
+      const firstMissing = this.stepQuestions().findIndex(
         (question) => question.isRequired && !this.isAnswered(question),
       );
       if (firstMissing >= 0) {
         this.step.set(firstMissing);
         this.stepHint.set('جاوب على الأسئلة المطلوبة أولاً');
+        return;
+      }
+      if (this.notesQuestion()?.isRequired && !this.notes().trim()) {
+        this.step.set(this.totalSteps() - 1);
+        this.stepHint.set('اكتب ملاحظتك عشان تكمل');
       }
       return;
     }
@@ -194,10 +237,12 @@ export class FeedbackComponent {
     this.submitError.set('');
 
     try {
+      const notes = this.notes().trim();
       await this.api.submitPublicResponse({
         customerName: customer?.name ?? 'زائر',
         phoneNumber: customer?.phone || null,
         branchId: customer?.branchId,
+        notes: notes || null,
         answers: this.buildAnswers(),
       });
       this.submitted.set(true);
@@ -219,6 +264,10 @@ export class FeedbackComponent {
 
   protected isAnsweredPublic(question: PublicQuestion): boolean {
     return this.isAnswered(question);
+  }
+
+  protected notesStepAnswered(): boolean {
+    return this.notes().trim().length > 0;
   }
 
   private advanceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -247,14 +296,24 @@ export class FeedbackComponent {
     this.loading.set(true);
     this.error.set('');
     this.step.set(0);
+    this.notes.set('');
+    this.answers.set({});
 
     try {
       this.store.survey.set(await this.api.getPublicSurvey());
+      this.hydrateNotesFromTextQuestion();
     } catch (error) {
       this.error.set(errorMessage(error));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private hydrateNotesFromTextQuestion(): void {
+    const notesQuestion = this.notesQuestion();
+    if (!notesQuestion) return;
+    const existing = this.draft(notesQuestion.id).textValue;
+    if (existing) this.notes.set(existing);
   }
 
   private isAnswered(question: PublicQuestion): boolean {
@@ -277,8 +336,21 @@ export class FeedbackComponent {
   }
 
   private buildAnswers(): SubmitAnswer[] {
+    const notes = this.notes().trim();
+    const notesQuestion = this.notesQuestion();
+
     return this.questions().flatMap((question) => {
-      if (!this.isAnswered(question)) return [];
+      if (question.type === 'Text') {
+        if (notesQuestion && question.id === notesQuestion.id) {
+          if (!notes) return [];
+          return [{ questionId: question.id, textValue: notes }];
+        }
+        // Other text questions stay out of the wizard; skip unless already drafted.
+        if (!this.isAnswered(question)) return [];
+      } else if (!this.isAnswered(question)) {
+        return [];
+      }
+
       const draft = this.draft(question.id);
       const answer: SubmitAnswer = { questionId: question.id };
 
@@ -321,6 +393,12 @@ function emptyDraft(): AnswerDraft {
     textValue: '',
     numberValue: null,
   };
+}
+
+function isNotesKey(key: string | null): boolean {
+  if (!key) return false;
+  const normalized = key.trim().toLowerCase();
+  return /notes?|note|suggestion|comment|feedback|ملاحظة|ملاحظات|اقتراح/.test(normalized);
 }
 
 function errorMessage(error: unknown): string {

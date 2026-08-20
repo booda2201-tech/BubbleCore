@@ -315,6 +315,68 @@ $mobile: 639px;
   word-break: break-word;
 }
 
+.notes-block {
+  margin-top: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgb(254 245 237 / 0.95), rgb(255 252 245 / 0.98));
+  border: 1px solid rgb(242 107 9 / 0.14);
+
+  &.is-empty {
+    background: rgb(254 250 244 / 0.7);
+    border-color: rgb(26 36 51 / 0.06);
+  }
+}
+
+.notes-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.notes-badge {
+  display: inline-flex;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: rgb(242 107 9 / 0.12);
+  color: #b14000;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.notes-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgb(26 36 51 / 0.72);
+}
+
+.notes-body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #1a2433;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.notes-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgb(26 36 51 / 0.4);
+}
+
+.notes-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgb(242 107 9 / 0.12);
+  color: #b14000;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
 .tone-positive {
   background: linear-gradient(90deg, rgb(43 182 175 / 0.7), #2bb6af);
 }

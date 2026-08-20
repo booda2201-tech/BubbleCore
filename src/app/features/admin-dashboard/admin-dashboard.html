@@ -253,6 +253,9 @@
                       <span>{{ row.branchName }}</span>
                     }
                     <span class="ltr-nums">{{ row.submittedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+                    @if (rowNotes(row)) {
+                      <span class="notes-chip">فيه ملاحظات</span>
+                    }
                   </div>
                 </div>
 
@@ -279,7 +282,7 @@
 
               @if (isExpanded(row.id)) {
                 <div class="response-details">
-                  @for (question of questions(); track question.id) {
+                  @for (question of detailQuestions(); track question.id) {
                     <div class="detail-row">
                       <span class="detail-q">{{ questionLabel(question) }}</span>
                       @if (isChoice(question)) {
@@ -295,7 +298,7 @@
                       } @else {
                         <span
                           class="detail-a"
-                          [class.ltr-nums]="!isText(question) && !isMulti(question)"
+                          [class.ltr-nums]="!isMulti(question)"
                         >
                           {{ answerText(row, question) }}
                         </span>
@@ -304,6 +307,18 @@
                   } @empty {
                     <p class="text-sm text-ink-400">لا توجد أسئلة.</p>
                   }
+
+                  <div class="notes-block" [class.is-empty]="!rowNotes(row)">
+                    <div class="notes-head">
+                      <span class="notes-badge">الملاحظات</span>
+                      <span class="notes-title">تقرير العميل</span>
+                    </div>
+                    @if (rowNotes(row); as notes) {
+                      <p class="notes-body">{{ notes }}</p>
+                    } @else {
+                      <p class="notes-empty">لا توجد ملاحظات على التقييم ده.</p>
+                    }
+                  </div>
                 </div>
               }
             </article>
