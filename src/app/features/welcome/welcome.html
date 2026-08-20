@@ -112,17 +112,28 @@
             ✕
           </button>
         </div>
-        <p class="mt-2 text-xs text-ink-500">أدخل كلمة مرور لوحة التحكم للمتابعة.</p>
+        <p class="mt-2 text-xs text-ink-500">أدخل الإيميل أو الموبايل وكلمة المرور للمتابعة.</p>
 
         <input
-          #passwordField
+          #identityField
+          type="text"
+          class="glass-input mt-5 text-start"
+          [class.is-invalid]="!!adminError()"
+          [value]="adminEmailOrPhone()"
+          (input)="adminEmailOrPhone.set($any($event.target).value); adminError.set('')"
+          (keydown.enter)="submitAdminLogin()"
+          placeholder="الإيميل أو الموبايل"
+          autocomplete="username"
+          aria-label="إيميل أو موبايل المسؤول"
+        />
+        <input
           type="password"
-          class="glass-input ltr-nums mt-5 text-start"
+          class="glass-input ltr-nums mt-3 text-start"
           [class.is-invalid]="!!adminError()"
           [value]="adminPassword()"
           (input)="adminPassword.set($any($event.target).value); adminError.set('')"
-          (keydown.enter)="submitAdminPassword()"
-          placeholder="••••••••"
+          (keydown.enter)="submitAdminLogin()"
+          placeholder="كلمة المرور"
           autocomplete="current-password"
           aria-label="كلمة مرور المسؤول"
         />
@@ -131,10 +142,17 @@
         }
 
         <div class="mt-6 flex gap-3">
-          <button type="button" class="btn-primary flex-1" (click)="submitAdminPassword()">
-            فتح اللوحة
+          <button
+            type="button"
+            class="btn-primary flex-1"
+            [disabled]="adminBusy()"
+            (click)="submitAdminLogin()"
+          >
+            {{ adminBusy() ? 'جاري الدخول…' : 'دخول' }}
           </button>
-          <button type="button" class="btn-ghost" (click)="closeAdminGate()">إلغاء</button>
+          <button type="button" class="btn-ghost" [disabled]="adminBusy()" (click)="closeAdminGate()">
+            إلغاء
+          </button>
         </div>
       </div>
     </div>

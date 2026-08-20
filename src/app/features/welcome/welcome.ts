@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { AdminAuth } from '../../core/admin-auth';
 import { FeedbackStore } from '../../core/feedback-store';
 import { ChoiceOption } from '../../core/models';
-import { SurveyApi } from '../../core/survey-api';
+import { ApiRequestError, SurveyApi } from '../../core/survey-api';
 import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 
 /** Consecutive logo taps required to reveal the admin gate. */
@@ -27,7 +27,7 @@ export class WelcomeComponent {
   private readonly auth = inject(AdminAuth);
   private readonly api = inject(SurveyApi);
 
-  private readonly passwordField = viewChild<ElementRef<HTMLInputElement>>('passwordField');
+  private readonly identityField = viewChild<ElementRef<HTMLInputElement>>('identityField');
 
   private tapCount = 0;
   private lastTap = 0;
@@ -41,8 +41,10 @@ export class WelcomeComponent {
   protected readonly selectedBranch = signal<string | null>(null);
 
   protected readonly adminGateOpen = signal(false);
+  protected readonly adminEmailOrPhone = signal('');
   protected readonly adminPassword = signal('');
   protected readonly adminError = signal('');
+  protected readonly adminBusy = signal(false);
 
   constructor() {
     void this.loadSurvey();
@@ -77,24 +79,54 @@ export class WelcomeComponent {
   }
 
   protected openAdminGate(): void {
-    this.adminError.set('');
-    this.adminPassword.set('');
-    this.adminGateOpen.set(true);
-    setTimeout(() => this.passwordField()?.nativeElement.focus());
-  }
-
-  protected closeAdminGate(): void {
-    this.adminGateOpen.set(false);
-  }
-
-  protected submitAdminPassword(): void {
-    if (this.auth.unlock(this.adminPassword())) {
-      this.adminGateOpen.set(false);
+    if (this.auth.isUnlocked()) {
       this.router.navigate(['/admin']);
       return;
     }
-    this.adminError.set('كلمة المرور غير صحيحة');
+
+    this.adminError.set('');
+    this.adminEmailOrPhone.set('');
     this.adminPassword.set('');
+    this.adminGateOpen.set(true);
+    setTimeout(() => this.identityField()?.nativeElement.focus());
+  }
+
+  protected closeAdminGate(): void {
+    if (this.adminBusy()) return;
+    this.adminGateOpen.set(false);
+  }
+
+  protected async submitAdminLogin(): Promise<void> {
+    if (this.adminBusy()) return;
+
+    const emailOrPhone = this.adminEmailOrPhone().trim();
+    const password = this.adminPassword();
+    if (!emailOrPhone || !password) {
+      this.adminError.set('الإيميل/الموبايل والباسورد مطلوبين.');
+      return;
+    }
+
+    this.adminBusy.set(true);
+    this.adminError.set('');
+
+    try {
+      const session = await this.api.login({ emailOrPhone, password });
+      this.auth.setSession(session);
+
+      if (!this.auth.hasSurveyAccess()) {
+        this.auth.lock();
+        this.adminError.set('الحساب ده مش مسموح له يدخل لوحة الفورم دي.');
+        return;
+      }
+
+      this.adminGateOpen.set(false);
+      this.router.navigate(['/admin']);
+    } catch (error) {
+      this.adminError.set(loginErrorMessage(error));
+      this.adminPassword.set('');
+    } finally {
+      this.adminBusy.set(false);
+    }
   }
 
   protected invalid(control: 'name' | 'phone'): boolean {
@@ -120,4 +152,11 @@ export class WelcomeComponent {
       this.branchOptions.set([]);
     }
   }
+}
+
+function loginErrorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    return error.errors.length ? error.errors.join(' — ') : error.message;
+  }
+  return 'حصل خطأ غير متوقع.';
 }

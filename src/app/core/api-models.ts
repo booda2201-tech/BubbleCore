@@ -245,3 +245,28 @@ export interface SaveOption {
   icon?: string | null;
   order: number;
 }
+
+export interface LoginRequest {
+  emailOrPhone: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  surveys: AuthUserSurvey[];
+}
+
+export interface AuthUserSurvey {
+  id: number;
+  title: string;
+  slug: string;
+  role: string;
+}

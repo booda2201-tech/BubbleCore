@@ -3,7 +3,10 @@ import { Service, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
+  AuthUser,
   Branch,
+  LoginRequest,
+  LoginResponse,
   PagedResult,
   PublicSurvey,
   ResponsesQuery,
@@ -33,6 +36,14 @@ export class SurveyApi {
   private readonly base = environment.apiBaseUrl.endsWith('/')
     ? environment.apiBaseUrl
     : `${environment.apiBaseUrl}/`;
+
+  login(body: LoginRequest): Promise<LoginResponse> {
+    return this.post<LoginResponse>(this.url('auth', 'login'), body);
+  }
+
+  getMe(): Promise<AuthUser> {
+    return this.get<AuthUser>(this.url('auth', 'me'));
+  }
 
   getPublicSurvey(slug = environment.surveySlug): Promise<PublicSurvey> {
     return this.get<PublicSurvey>(this.url('public', 'surveys', slug));

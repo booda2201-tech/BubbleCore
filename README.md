@@ -24,11 +24,11 @@ Unknown routes redirect to `/`. All three screens are lazy-loaded via `loadCompo
 
 ## Hidden admin access
 
-On the welcome screen, tap the **BubbleCore logo three times in a row** (within ~900 ms between taps) to open the admin password dialog.
+On the welcome screen, tap the **BubbleCore logo three times in a row** (within ~900 ms between taps) to open the admin login dialog (email/phone + password).
 
-- Demo password: `bubble2026` (defined in `src/app/core/admin-auth.ts`)
-- The unlocked state lives in `sessionStorage`, and `adminGuard` blocks `/admin` until unlocked.
-- This is a client-side gate for demo purposes only — move the check to a backend before shipping.
+- Login calls `POST /api/auth/login` and stores the JWT in `sessionStorage`.
+- Admin API requests send `Authorization: Bearer {token}`; a 401 clears the session.
+- `adminGuard` blocks `/admin` until a token exists.
 
 ## Architecture
 

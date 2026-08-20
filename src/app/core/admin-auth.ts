@@ -1,43 +1,63 @@
-import { Service, signal } from '@angular/core';
+import { Service, computed, signal } from '@angular/core';
+import { environment } from '../../environments/environment';
+import { AuthUser, LoginResponse } from './api-models';
 
-/**
- * Demo-only gate for the hidden admin area. A real deployment must verify the
- * secret on a server; this only keeps the dashboard out of casual reach.
- */
-const ADMIN_PASSWORD = 'bubble2026';
-const SESSION_KEY = 'bubblecore.admin.session';
+const TOKEN_KEY = 'bubblecore.admin.token';
+const USER_KEY = 'bubblecore.admin.user';
 
 @Service()
 export class AdminAuth {
-  private readonly unlocked = signal<boolean>(this.restore());
+  private readonly tokenState = signal<string | null>(this.readToken());
+  private readonly userState = signal<AuthUser | null>(this.readUser());
 
-  readonly isUnlocked = this.unlocked.asReadonly();
+  readonly token = this.tokenState.asReadonly();
+  readonly user = this.userState.asReadonly();
+  readonly isUnlocked = computed(() => !!this.tokenState());
 
-  unlock(password: string): boolean {
-    const ok = password.trim() === ADMIN_PASSWORD;
-    if (ok) {
-      this.unlocked.set(true);
-      this.store(true);
-    }
-    return ok;
+  setSession(session: LoginResponse): void {
+    this.tokenState.set(session.token);
+    this.userState.set(session.user);
+    this.persist(session.token, session.user);
+  }
+
+  hasSurveyAccess(slug = environment.surveySlug): boolean {
+    return this.userState()?.surveys.some((survey) => survey.slug === slug) ?? false;
   }
 
   lock(): void {
-    this.unlocked.set(false);
-    this.store(false);
+    this.tokenState.set(null);
+    this.userState.set(null);
+    this.persist(null, null);
   }
 
-  private restore(): boolean {
-    if (typeof sessionStorage === 'undefined') return false;
-    return sessionStorage.getItem(SESSION_KEY) === '1';
-  }
-
-  private store(value: boolean): void {
+  private persist(token: string | null, user: AuthUser | null): void {
     if (typeof sessionStorage === 'undefined') return;
-    if (value) {
-      sessionStorage.setItem(SESSION_KEY, '1');
-    } else {
-      sessionStorage.removeItem(SESSION_KEY);
+
+    if (token && user) {
+      sessionStorage.setItem(TOKEN_KEY, token);
+      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      return;
+    }
+
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
+  }
+
+  private readToken(): string | null {
+    if (typeof sessionStorage === 'undefined') return null;
+    return sessionStorage.getItem(TOKEN_KEY);
+  }
+
+  private readUser(): AuthUser | null {
+    if (typeof sessionStorage === 'undefined') return null;
+
+    const raw = sessionStorage.getItem(USER_KEY);
+    if (!raw) return null;
+
+    try {
+      return JSON.parse(raw) as AuthUser;
+    } catch {
+      return null;
     }
   }
 }
