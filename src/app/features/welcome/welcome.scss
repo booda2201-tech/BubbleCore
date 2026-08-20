@@ -18,3 +18,50 @@
     filter: drop-shadow(0 12px 24px rgb(242 107 9 / 0.22));
   }
 }
+
+// Password field is LTR; keep the toggle on the physical right.
+.password-field {
+  position: relative;
+
+  .glass-input {
+    padding-left: 1.1rem;
+    padding-right: 2.85rem;
+  }
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.45rem;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgb(26 36 51 / 0.55);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+
+  svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    pointer-events: none;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: #f26b09;
+    background: rgb(242 107 9 / 0.1);
+    outline: none;
+  }
+
+  &[aria-pressed='true'] {
+    color: #f26b09;
+  }
+}

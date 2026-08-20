@@ -13,13 +13,12 @@ import {
 } from '../../core/api-models';
 import { AdminAuth } from '../../core/admin-auth';
 import { FeedbackStore } from '../../core/feedback-store';
-import {
-  displayIcon,
-  optionTone,
-} from '../../core/models';
+import { displayIcon, optionTone } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
 import { AdminSurveyEditorComponent } from '../admin-survey-editor/admin-survey-editor';
 import { StarRatingComponent } from '../../shared/star-rating/star-rating';
+
+type InsightTab = 'distribution' | 'averages' | 'choices';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -53,6 +52,11 @@ export class AdminDashboardComponent {
   protected readonly starFilter = signal(0);
   protected readonly starOptions = [0, 5, 4, 3, 2, 1];
 
+  /** Which response card/row has its answers expanded. */
+  protected readonly expandedId = signal<number | null>(null);
+  protected readonly insightTab = signal<InsightTab>('distribution');
+  protected readonly selectedBreakdownId = signal<number | null>(null);
+
   protected readonly total = computed(() => this.analytics()?.totalResponses ?? 0);
   protected readonly averageRating = computed(() => this.analytics()?.averageRating ?? 0);
   protected readonly averageStars = computed(() => Math.round(this.averageRating()));
@@ -60,14 +64,20 @@ export class AdminDashboardComponent {
   protected readonly questionAverages = computed(() => this.analytics()?.ratingAverages ?? []);
   protected readonly choiceBreakdowns = computed(() => this.analytics()?.choiceBreakdowns ?? []);
   protected readonly kpis = computed(() => this.analytics()?.kpis ?? []);
-  protected readonly tableColspan = computed(() => 6 + this.questions().length);
+
+  protected readonly activeBreakdown = computed(() => {
+    const list = this.choiceBreakdowns();
+    if (!list.length) return null;
+    const selected = this.selectedBreakdownId();
+    return list.find((item) => item.questionId === selected) ?? list[0];
+  });
 
   constructor() {
     void this.refresh();
   }
 
   protected kpiTitle(kpi: Kpi): string {
-    return shortenLabel(kpi.title);
+    return shortenLabel(kpi.title, 40);
   }
 
   protected averageIcon(icon: string | null): string {
@@ -76,7 +86,7 @@ export class AdminDashboardComponent {
 
   protected averageTitle(item: { questionId: number; title: string }): string {
     const question = this.questions().find((entry) => entry.id === item.questionId);
-    return shortenLabel(question?.subtitle || question?.title || item.title);
+    return shortenLabel(question?.subtitle || question?.title || item.title, 32);
   }
 
   protected optionTone(value: string | null): string {
@@ -84,11 +94,11 @@ export class AdminDashboardComponent {
   }
 
   protected breakdownTitle(item: ChoiceBreakdown): string {
-    return shortenLabel(item.title);
+    return shortenLabel(item.title, 36);
   }
 
   protected questionLabel(question: QuestionDetails): string {
-    return shortenLabel(question.subtitle || question.title);
+    return shortenLabel(question.subtitle || question.title, 40);
   }
 
   protected starLabel(stars: number): string {
@@ -97,6 +107,22 @@ export class AdminDashboardComponent {
 
   protected overallStars(row: SurveyResponseRow): number {
     return Math.round(row.averageRating ?? 0);
+  }
+
+  protected isExpanded(id: number): boolean {
+    return this.expandedId() === id;
+  }
+
+  protected toggleExpand(id: number): void {
+    this.expandedId.update((current) => (current === id ? null : id));
+  }
+
+  protected setInsightTab(tab: InsightTab): void {
+    this.insightTab.set(tab);
+  }
+
+  protected selectBreakdown(questionId: number): void {
+    this.selectedBreakdownId.set(questionId);
   }
 
   protected onSearch(event: Event): void {
@@ -178,6 +204,7 @@ export class AdminDashboardComponent {
     this.deletingId.set(id);
     try {
       await this.api.deleteResponse(surveyId, id);
+      if (this.expandedId() === id) this.expandedId.set(null);
       await Promise.all([this.loadAnalytics(surveyId), this.loadResponses(surveyId)]);
     } catch (error) {
       this.error.set(errorMessage(error));
@@ -240,7 +267,10 @@ export class AdminDashboardComponent {
 
   private async loadAnalytics(id = this.surveyId()): Promise<void> {
     if (!id) return;
-    this.analytics.set(await this.api.getAnalytics(id));
+    const analytics = await this.api.getAnalytics(id);
+    this.analytics.set(analytics);
+    const firstBreakdown = analytics.choiceBreakdowns[0]?.questionId ?? null;
+    this.selectedBreakdownId.set(firstBreakdown);
   }
 
   private async loadResponses(id = this.surveyId()): Promise<void> {
@@ -263,7 +293,7 @@ function errorMessage(error: unknown): string {
   return 'حصل خطأ غير متوقع.';
 }
 
-function shortenLabel(value: string): string {
+function shortenLabel(value: string, max = 24): string {
   const text = value.trim();
-  return text.length > 24 ? `${text.slice(0, 24)}…` : text;
+  return text.length > max ? `${text.slice(0, max)}…` : text;
 }

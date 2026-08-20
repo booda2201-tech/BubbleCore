@@ -42,7 +42,7 @@
           class="glass-input"
           [class.is-invalid]="invalid('name')"
           formControlName="name"
-          placeholder="اكتب اسمك الكريم"
+          placeholder="اكتب اسمك"
           autocomplete="name"
         />
         @if (invalid('name')) {
@@ -126,17 +126,57 @@
           autocomplete="username"
           aria-label="إيميل أو موبايل المسؤول"
         />
-        <input
-          type="password"
-          class="glass-input ltr-nums mt-3 text-start"
-          [class.is-invalid]="!!adminError()"
-          [value]="adminPassword()"
-          (input)="adminPassword.set($any($event.target).value); adminError.set('')"
-          (keydown.enter)="submitAdminLogin()"
-          placeholder="كلمة المرور"
-          autocomplete="current-password"
-          aria-label="كلمة مرور المسؤول"
-        />
+        <div class="password-field mt-3">
+          <input
+            [type]="showAdminPassword() ? 'text' : 'password'"
+            class="glass-input ltr-nums text-start"
+            [class.is-invalid]="!!adminError()"
+            [value]="adminPassword()"
+            (input)="adminPassword.set($any($event.target).value); adminError.set('')"
+            (keydown.enter)="submitAdminLogin()"
+            placeholder="كلمة المرور"
+            autocomplete="current-password"
+            aria-label="كلمة مرور المسؤول"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="toggleAdminPassword()"
+            [attr.aria-label]="showAdminPassword() ? 'إخفاء كلمة المرور' : 'عرض كلمة المرور'"
+            [attr.aria-pressed]="showAdminPassword()"
+          >
+            @if (showAdminPassword()) {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.1A9.8 9.8 0 0112 5c5 0 9.3 3.1 11 7.5a11.7 11.7 0 01-4.2 5.1M6.1 6.1A11.7 11.7 0 001 12.5C2.7 16.9 7 20 12 20c1.7 0 3.3-.4 4.7-1"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M1 12.5C2.7 8.1 7 5 12 5s9.3 3.1 11 7.5c-1.7 4.4-6 7.5-11 7.5S2.7 16.9 1 12.5z"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12.5"
+                  r="3"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+              </svg>
+            }
+          </button>
+        </div>
         @if (adminError()) {
           <p class="field-error">{{ adminError() }}</p>
         }

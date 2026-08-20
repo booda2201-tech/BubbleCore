@@ -22,137 +22,195 @@
       </div>
     </div>
   } @else if (!submitted()) {
-    <div class="animate-rise relative z-10 mx-auto w-full max-w-3xl">
-      <header class="glass-card q-card flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        <div class="min-w-0">
-          <p class="eyebrow">{{ survey()?.description || 'تقييم تجربتك في بابل هوب' }}</p>
-          <h1 class="mt-1 text-xl font-bold text-ink-900 sm:text-2xl">
-            أهلاً <span class="text-hope">{{ customer()?.name || 'بيك' }}</span>
-          </h1>
-          @if (customer()?.phone) {
-            <p class="ltr-nums mt-1 text-xs text-ink-400">{{ customer()?.phone }}</p>
-          }
+    <div class="animate-rise relative z-10 mx-auto flex w-full max-w-xl flex-col">
+      <header class="glass-card q-card">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="eyebrow">{{ survey()?.description || 'تقييم تجربتك في بابل هوب' }}</p>
+            <h1 class="mt-1 text-xl font-bold text-ink-900 sm:text-2xl">
+              أهلاً <span class="text-hope">{{ customer()?.name || 'بيك' }}</span>
+            </h1>
+            @if (customer()?.phone) {
+              <p class="ltr-nums mt-1 text-xs text-ink-400">{{ customer()?.phone }}</p>
+            }
+          </div>
+          <button type="button" class="exit-btn" (click)="finish()" aria-label="إلغاء التقييم">
+            ✕
+          </button>
         </div>
-        <div class="w-full sm:w-56">
+
+        <div class="mt-4">
           <div class="mb-2 flex items-center justify-between text-[0.7rem] text-ink-400">
-            <span>نسبة الإكمال</span>
+            <span>السؤال {{ step() + 1 }} من {{ totalSteps() }}</span>
             <span class="ltr-nums">{{ progress() | number: '1.0-0' }}%</span>
           </div>
           <div class="h-1.5 overflow-hidden rounded-full bg-cream-300">
             <div class="progress-fill h-full rounded-full" [style.width.%]="progress()"></div>
           </div>
         </div>
+
+        @if (totalSteps() > 1) {
+          <div class="step-dots mt-4" role="tablist" aria-label="خطوات الأسئلة">
+            @for (question of questions(); track question.id; let i = $index) {
+              <button
+                type="button"
+                class="step-dot"
+                role="tab"
+                [class.is-active]="i === step()"
+                [class.is-done]="isAnsweredPublic(question)"
+                [attr.aria-selected]="i === step()"
+                [attr.aria-label]="'السؤال ' + (i + 1)"
+                (click)="goTo(i)"
+              ></button>
+            }
+          </div>
+        }
       </header>
 
-      @for (question of questions(); track question.id; let i = $index) {
-        <div class="glass-card q-card glass-hover mt-3 sm:mt-6" [class.text-center]="question.type !== 'Text'">
-          @if (icon(question.icon); as emoji) {
-            <span class="mb-1 block text-2xl sm:text-3xl" aria-hidden="true">{{ emoji }}</span>
-          }
-
-          <h2 class="text-base font-bold text-ink-900 sm:text-lg">
-            <span class="ltr-nums text-orange-500">{{ i + 1 }}.</span> {{ question.title }}
-            @if (question.isRequired) {
-              <span class="text-orange-500"> *</span>
+      @for (_ of [step()]; track step()) {
+        @if (currentQuestion(); as question) {
+          <div
+            class="question-stage glass-card q-card glass-hover mt-3 sm:mt-5"
+            [class.text-center]="question.type !== 'Text'"
+          >
+            @if (icon(question.icon); as emoji) {
+              <span class="mb-2 block text-3xl sm:text-4xl" aria-hidden="true">{{ emoji }}</span>
             }
-          </h2>
-          @if (question.subtitle) {
-            <p class="mt-1 text-xs text-ink-400">{{ question.subtitle }}</p>
-          }
 
-          @switch (question.type) {
-            @case ('Rating') {
-              <div class="mt-4 flex justify-center sm:mt-5">
-                <app-star-rating
-                  size="lg"
-                  [showHint]="true"
-                  [value]="draft(question.id).ratingValue ?? 0"
-                  (valueChange)="setRating(question.id, $event)"
-                  [ariaLabel]="question.title"
+            <p class="step-badge ltr-nums">سؤال {{ step() + 1 }}</p>
+
+            <h2 class="mt-2 text-lg font-bold text-ink-900 sm:text-xl">
+              {{ question.title }}
+              @if (question.isRequired) {
+                <span class="text-orange-500"> *</span>
+              }
+            </h2>
+            @if (question.subtitle) {
+              <p class="mt-2 text-sm text-ink-400">{{ question.subtitle }}</p>
+            }
+
+            @switch (question.type) {
+              @case ('Rating') {
+                <div class="mt-6 flex justify-center sm:mt-8">
+                  <app-star-rating
+                    size="lg"
+                    [showHint]="true"
+                    [value]="draft(question.id).ratingValue ?? 0"
+                    (valueChange)="setRating(question.id, $event)"
+                    [ariaLabel]="question.title"
+                  />
+                </div>
+                <p class="mt-4 text-xs text-ink-400">اختار النجوم وهنكمل للسؤال اللي بعده تلقائي</p>
+              }
+              @case ('Number') {
+                <input
+                  type="number"
+                  class="glass-input mx-auto mt-6 max-w-xs text-center ltr-nums sm:mt-8"
+                  [value]="draft(question.id).numberValue ?? ''"
+                  [attr.min]="question.minValue"
+                  [attr.max]="question.maxValue"
+                  (input)="onNumber(question.id, $event)"
                 />
-              </div>
-            }
-            @case ('Number') {
-              <input
-                type="number"
-                class="glass-input mx-auto mt-4 max-w-xs text-center ltr-nums sm:mt-5"
-                [value]="draft(question.id).numberValue ?? ''"
-                [attr.min]="question.minValue"
-                [attr.max]="question.maxValue"
-                (input)="onNumber(question.id, $event)"
-              />
-            }
-            @case ('Text') {
-              <textarea
-                rows="4"
-                class="glass-input mt-3 resize-none sm:mt-4"
-                [value]="draft(question.id).textValue"
-                [attr.maxlength]="question.maxLength ?? 500"
-                (input)="onText(question, $event)"
-                placeholder="اكتب اقتراحك هنا…"
-              ></textarea>
-              <div class="ltr-nums mt-2 text-end text-[0.7rem] text-ink-400">
-                {{ draft(question.id).textValue.length }} / {{ question.maxLength ?? 500 }}
-              </div>
-            }
-            @default {
-              <div class="choice-grid mt-4 sm:mt-5">
-                @for (option of question.options; track option.id) {
-                  <button
-                    type="button"
-                    class="pill"
-                    [class.pill-active]="
-                      question.type === 'MultipleChoice'
-                        ? draft(question.id).selectedOptionIds.includes(option.id)
-                        : draft(question.id).selectedOptionId === option.id
-                    "
-                    [attr.aria-pressed]="
-                      question.type === 'MultipleChoice'
-                        ? draft(question.id).selectedOptionIds.includes(option.id)
-                        : draft(question.id).selectedOptionId === option.id
-                    "
-                    (click)="
-                      question.type === 'MultipleChoice'
-                        ? toggleMultiple(question.id, option.id)
-                        : toggleSingle(question.id, option.id)
-                    "
-                  >
-                    @if (icon(option.icon); as emoji) {
-                      <span aria-hidden="true">{{ emoji }}</span>
-                    }
-                    {{ option.text }}
-                  </button>
+              }
+              @case ('Text') {
+                <textarea
+                  rows="5"
+                  class="glass-input mt-5 resize-none sm:mt-6"
+                  [value]="draft(question.id).textValue"
+                  [attr.maxlength]="question.maxLength ?? 500"
+                  (input)="onText(question, $event)"
+                  placeholder="اكتب اقتراحك هنا…"
+                ></textarea>
+                <div class="ltr-nums mt-2 text-end text-[0.7rem] text-ink-400">
+                  {{ draft(question.id).textValue.length }} / {{ question.maxLength ?? 500 }}
+                </div>
+                @if (!question.isRequired) {
+                  <p class="mt-2 text-xs text-ink-400">اختياري — تقدر تتخطاه</p>
                 }
-              </div>
+              }
+              @default {
+                <div
+                  class="choice-grid mt-5 sm:mt-7"
+                  [class.choice-grid-wide]="question.options.length > 3"
+                >
+                  @for (option of question.options; track option.id) {
+                    <button
+                      type="button"
+                      class="pill"
+                      [class.pill-active]="
+                        question.type === 'MultipleChoice'
+                          ? draft(question.id).selectedOptionIds.includes(option.id)
+                          : draft(question.id).selectedOptionId === option.id
+                      "
+                      [attr.aria-pressed]="
+                        question.type === 'MultipleChoice'
+                          ? draft(question.id).selectedOptionIds.includes(option.id)
+                          : draft(question.id).selectedOptionId === option.id
+                      "
+                      (click)="
+                        question.type === 'MultipleChoice'
+                          ? toggleMultiple(question.id, option.id)
+                          : toggleSingle(question.id, option.id)
+                      "
+                    >
+                      @if (icon(option.icon); as emoji) {
+                        <span aria-hidden="true">{{ emoji }}</span>
+                      }
+                      {{ option.text }}
+                    </button>
+                  }
+                </div>
+                @if (question.type === 'MultipleChoice') {
+                  <p class="mt-4 text-xs text-ink-400">تقدر تختار أكثر من إجابة ثم تضغط التالي</p>
+                } @else {
+                  <p class="mt-4 text-xs text-ink-400">اختار إجابة وهنكمل تلقائي</p>
+                }
+              }
             }
-          }
-        </div>
+          </div>
+        }
       }
 
-      @if (!canSubmit() && !submitting()) {
-        <p class="mt-4 text-center text-xs text-ink-400">من فضلك جاوب على الأسئلة المطلوبة أولاً</p>
+      @if (stepHint()) {
+        <p class="mt-3 text-center text-xs text-orange-600">{{ stepHint() }}</p>
       }
       @if (submitError()) {
         <p class="field-error mt-3 text-center">{{ submitError() }}</p>
       }
 
-      <div class="action-bar mt-4 flex flex-col-reverse gap-2.5 sm:mt-8 sm:flex-row sm:justify-between sm:gap-3">
-        <button type="button" class="btn-ghost" (click)="finish()">إلغاء</button>
+      <div class="action-bar mt-4 flex gap-2.5 sm:mt-6">
         <button
           type="button"
-          class="btn-primary flex-1 text-base sm:flex-none sm:px-12"
-          [disabled]="!canSubmit()"
-          (click)="submit()"
+          class="btn-ghost flex-1"
+          [disabled]="isFirst() || submitting()"
+          (click)="goPrev()"
         >
-          <span>{{ submitting() ? 'جاري الإرسال…' : 'إرسال التقييم' }}</span>
-          <span aria-hidden="true">←</span>
+          السابق
+        </button>
+        <button
+          type="button"
+          class="btn-primary flex-[1.4] text-base"
+          [disabled]="submitting()"
+          (click)="goNext()"
+        >
+          @if (submitting()) {
+            <span>جاري الإرسال…</span>
+          } @else if (isLast()) {
+            <span>إرسال التقييم</span>
+            <span aria-hidden="true">←</span>
+          } @else {
+            <span>التالي</span>
+            <span aria-hidden="true">←</span>
+          }
         </button>
       </div>
     </div>
   } @else {
     <div class="relative z-10 mx-auto flex min-h-[70dvh] max-w-lg items-center">
       <div class="glass-panel animate-rise w-full p-6 text-center sm:p-10">
-        <div class="success-badge mx-auto grid h-20 w-20 place-items-center rounded-full sm:h-24 sm:w-24">
+        <div
+          class="success-badge mx-auto grid h-20 w-20 place-items-center rounded-full sm:h-24 sm:w-24"
+        >
           <svg viewBox="0 0 24 24" class="h-10 w-10 sm:h-12 sm:w-12" aria-hidden="true">
             <path
               d="M20 6L9 17l-5-5"

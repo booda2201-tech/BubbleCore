@@ -43,6 +43,7 @@ export class WelcomeComponent {
   protected readonly adminGateOpen = signal(false);
   protected readonly adminEmailOrPhone = signal('');
   protected readonly adminPassword = signal('');
+  protected readonly showAdminPassword = signal(false);
   protected readonly adminError = signal('');
   protected readonly adminBusy = signal(false);
 
@@ -87,6 +88,7 @@ export class WelcomeComponent {
     this.adminError.set('');
     this.adminEmailOrPhone.set('');
     this.adminPassword.set('');
+    this.showAdminPassword.set(false);
     this.adminGateOpen.set(true);
     setTimeout(() => this.identityField()?.nativeElement.focus());
   }
@@ -94,6 +96,11 @@ export class WelcomeComponent {
   protected closeAdminGate(): void {
     if (this.adminBusy()) return;
     this.adminGateOpen.set(false);
+    this.showAdminPassword.set(false);
+  }
+
+  protected toggleAdminPassword(): void {
+    this.showAdminPassword.update((value) => !value);
   }
 
   protected async submitAdminLogin(): Promise<void> {

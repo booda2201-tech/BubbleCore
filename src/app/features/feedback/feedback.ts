@@ -29,15 +29,30 @@ export class FeedbackComponent {
   protected readonly customer = this.store.customer;
   protected readonly survey = this.store.survey;
   protected readonly answers = signal<Record<number, AnswerDraft>>({});
+  protected readonly step = signal(0);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly submitted = signal(false);
   protected readonly error = signal('');
   protected readonly submitError = signal('');
+  protected readonly stepHint = signal('');
 
   protected readonly questions = computed(() =>
     [...(this.survey()?.questions ?? [])].sort((a, b) => a.order - b.order),
   );
+
+  protected readonly totalSteps = computed(() => this.questions().length);
+
+  protected readonly currentQuestion = computed(
+    () => this.questions()[this.step()] ?? null,
+  );
+
+  protected readonly isFirst = computed(() => this.step() <= 0);
+
+  protected readonly isLast = computed(() => {
+    const total = this.totalSteps();
+    return total > 0 && this.step() >= total - 1;
+  });
 
   protected readonly overall = computed(() => {
     const scores = this.questions()
@@ -56,10 +71,16 @@ export class FeedbackComponent {
       .every((question) => this.isAnswered(question));
   });
 
+  /** Progress by current step, not just answered count — clearer for a wizard. */
   protected readonly progress = computed(() => {
-    const list = this.questions();
-    if (!list.length) return 0;
-    return (list.filter((question) => this.isAnswered(question)).length / list.length) * 100;
+    const total = this.totalSteps();
+    if (!total) return 0;
+    return ((this.step() + 1) / total) * 100;
+  });
+
+  protected readonly currentAnswered = computed(() => {
+    const question = this.currentQuestion();
+    return question ? this.isAnswered(question) : false;
   });
 
   constructor() {
@@ -76,11 +97,16 @@ export class FeedbackComponent {
 
   protected setRating(questionId: number, value: number): void {
     this.patch(questionId, { ratingValue: value > 0 ? value : null });
+    this.stepHint.set('');
+    if (value > 0) this.autoAdvance();
   }
 
   protected toggleSingle(questionId: number, optionId: number): void {
     const current = this.draft(questionId).selectedOptionId;
-    this.patch(questionId, { selectedOptionId: current === optionId ? null : optionId });
+    const next = current === optionId ? null : optionId;
+    this.patch(questionId, { selectedOptionId: next });
+    this.stepHint.set('');
+    if (next !== null) this.autoAdvance();
   }
 
   protected toggleMultiple(questionId: number, optionId: number): void {
@@ -89,21 +115,79 @@ export class FeedbackComponent {
       ? current.filter((id) => id !== optionId)
       : [...current, optionId];
     this.patch(questionId, { selectedOptionIds: next });
+    this.stepHint.set('');
   }
 
   protected onText(question: PublicQuestion, event: Event): void {
     const max = question.maxLength ?? 500;
     const value = (event.target as HTMLTextAreaElement).value.slice(0, max);
     this.patch(question.id, { textValue: value });
+    this.stepHint.set('');
   }
 
   protected onNumber(questionId: number, event: Event): void {
     const raw = (event.target as HTMLInputElement).value;
     this.patch(questionId, { numberValue: raw === '' ? null : Number(raw) });
+    this.stepHint.set('');
+  }
+
+  protected goNext(): void {
+    this.clearAdvanceTimer();
+    const question = this.currentQuestion();
+    if (!question) return;
+
+    if (question.isRequired && !this.isAnswered(question)) {
+      this.stepHint.set('جاوب على السؤال ده عشان تكمل');
+      return;
+    }
+
+    this.stepHint.set('');
+    if (this.isLast()) {
+      void this.submit();
+      return;
+    }
+
+    this.step.update((value) => Math.min(value + 1, this.totalSteps() - 1));
+  }
+
+  protected goPrev(): void {
+    this.clearAdvanceTimer();
+    this.stepHint.set('');
+    this.submitError.set('');
+    this.step.update((value) => Math.max(value - 1, 0));
+  }
+
+  protected goTo(index: number): void {
+    if (index < 0 || index >= this.totalSteps()) return;
+    this.clearAdvanceTimer();
+
+    // Allow jumping back freely; jumping forward only through already-answered required steps.
+    if (index > this.step()) {
+      for (let i = 0; i < index; i++) {
+        const question = this.questions()[i];
+        if (question?.isRequired && !this.isAnswered(question)) {
+          this.step.set(i);
+          this.stepHint.set('جاوب على الأسئلة المطلوبة بالترتيب');
+          return;
+        }
+      }
+    }
+
+    this.stepHint.set('');
+    this.step.set(index);
   }
 
   protected async submit(): Promise<void> {
-    if (!this.canSubmit()) return;
+    if (!this.canSubmit()) {
+      const firstMissing = this.questions().findIndex(
+        (question) => question.isRequired && !this.isAnswered(question),
+      );
+      if (firstMissing >= 0) {
+        this.step.set(firstMissing);
+        this.stepHint.set('جاوب على الأسئلة المطلوبة أولاً');
+      }
+      return;
+    }
 
     const customer = this.customer();
     this.submitting.set(true);
@@ -133,9 +217,36 @@ export class FeedbackComponent {
     void this.loadSurvey();
   }
 
+  protected isAnsweredPublic(question: PublicQuestion): boolean {
+    return this.isAnswered(question);
+  }
+
+  private advanceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private clearAdvanceTimer(): void {
+    if (this.advanceTimer) {
+      clearTimeout(this.advanceTimer);
+      this.advanceTimer = null;
+    }
+  }
+
+  private autoAdvance(): void {
+    if (this.isLast()) return;
+    this.clearAdvanceTimer();
+    // Brief pause so the selection highlight registers before the card swaps.
+    this.advanceTimer = setTimeout(() => {
+      this.advanceTimer = null;
+      if (!this.isLast() && this.currentAnswered()) {
+        this.stepHint.set('');
+        this.step.update((value) => Math.min(value + 1, this.totalSteps() - 1));
+      }
+    }, 280);
+  }
+
   private async loadSurvey(): Promise<void> {
     this.loading.set(true);
     this.error.set('');
+    this.step.set(0);
 
     try {
       this.store.survey.set(await this.api.getPublicSurvey());

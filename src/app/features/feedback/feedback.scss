@@ -7,7 +7,91 @@ $mobile: 639px;
   transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-// Answer options: one tap-friendly column per choice on phones, centred row above.
+.exit-btn {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgb(26 36 51 / 0.1);
+  background: #fff;
+  color: rgb(26 36 51 / 0.45);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    color: #c44646;
+    background: rgb(196 70 70 / 0.08);
+    border-color: rgb(196 70 70 / 0.35);
+  }
+}
+
+.step-badge {
+  display: inline-flex;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: rgb(242 107 9 / 0.1);
+  color: #b14000;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.step-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.step-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(26 36 51 / 0.14);
+  cursor: pointer;
+  transition:
+    width 0.25s ease,
+    background 0.25s ease,
+    transform 0.2s ease;
+
+  &.is-done {
+    background: #2bb6af;
+  }
+
+  &.is-active {
+    width: 1.35rem;
+    background: #f26b09;
+  }
+
+  &:hover {
+    transform: scale(1.15);
+  }
+}
+
+.question-stage {
+  min-height: 18rem;
+  animation: step-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -18,6 +102,15 @@ $mobile: 639px;
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.625rem;
+  }
+}
+
+.choice-grid-wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @media (min-width: 640px) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -53,6 +146,10 @@ textarea.glass-input {
     border-radius: 1.25rem;
   }
 
+  .question-stage {
+    min-height: 16rem;
+  }
+
   .choice-grid .pill {
     width: 100%;
     min-height: 3rem;
@@ -65,7 +162,6 @@ textarea.glass-input {
     min-height: 6rem;
   }
 
-  // Keeps the submit button reachable while scrolling a long form.
   .action-bar {
     position: sticky;
     bottom: 0;
@@ -79,6 +175,5 @@ textarea.glass-input {
   .action-bar .btn-primary,
   .action-bar .btn-ghost {
     min-height: 3.1rem;
-    width: 100%;
   }
 }

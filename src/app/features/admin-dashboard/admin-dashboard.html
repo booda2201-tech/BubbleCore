@@ -1,14 +1,12 @@
-<section class="relative min-h-dvh overflow-hidden px-3 py-5 sm:px-8 sm:py-8">
+<section class="relative min-h-dvh overflow-hidden px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
   <div class="orb h-96 w-96 bg-orange-500/25 -top-32 start-1/3 animate-float"></div>
   <div
     class="orb h-80 w-80 bg-teal-400/25 bottom-0 end-0 animate-float [animation-delay:-5s]"
   ></div>
 
-  <div class="animate-rise relative z-10 mx-auto w-full max-w-7xl">
-    <header
-      class="glass-panel flex flex-col gap-4 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-6"
-    >
-      <div class="flex items-center gap-3 sm:gap-4">
+  <div class="animate-rise relative z-10 mx-auto w-full max-w-6xl">
+    <header class="glass-panel admin-header p-4 sm:p-5">
+      <div class="flex items-center gap-3">
         <img
           class="admin-logo"
           src="assets/logo.png"
@@ -16,46 +14,43 @@
           width="512"
           height="315"
         />
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <p class="eyebrow">لوحة التحكم</p>
-          <h1 class="font-display truncate text-lg font-bold text-ink-900 sm:text-2xl">
+          <h1 class="font-display truncate text-base font-bold text-ink-900 sm:text-xl">
             {{ surveyTitle() }}
           </h1>
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+      <div class="header-actions">
         <button
           type="button"
-          class="btn-ghost w-full sm:w-auto"
+          class="btn-ghost"
           (click)="view() === 'editor' ? closeEditor() : openEditor()"
           [disabled]="!details()"
         >
-          <span>{{ view() === 'editor' ? 'لوحة التقييمات' : 'تعديل الأسئلة' }}</span>
+          {{ view() === 'editor' ? 'لوحة التقييمات' : 'تعديل الأسئلة' }}
         </button>
         <button
           type="button"
-          class="btn-primary w-full sm:w-auto"
+          class="btn-primary"
           (click)="exportExcel()"
           [disabled]="!total() || exporting() || view() === 'editor'"
         >
           <span aria-hidden="true">⇩</span>
-          <span>{{ exporting() ? 'جاري التصدير…' : 'تصدير Excel' }}</span>
+          <span>{{ exporting() ? 'جاري التصدير…' : 'تصدير' }}</span>
         </button>
-        <button type="button" class="btn-ghost w-full sm:w-auto" (click)="logout()">
-          <span aria-hidden="true">⏻</span>
-          <span>خروج</span>
-        </button>
+        <button type="button" class="btn-ghost" (click)="logout()">خروج</button>
       </div>
     </header>
 
     @if (loading()) {
-      <div class="glass-panel mt-4 p-10 text-center sm:mt-6">
+      <div class="glass-panel mt-4 p-10 text-center">
         <p class="eyebrow">جاري التحميل</p>
         <h2 class="mt-2 text-lg font-bold text-ink-900">بنجيب التقييمات من السيرفر</h2>
       </div>
     } @else if (view() === 'editor' && details(); as survey) {
-      <div class="mt-4 sm:mt-6">
+      <div class="mt-4">
         <app-admin-survey-editor
           [survey]="survey"
           (saved)="onEditorSaved($event)"
@@ -63,7 +58,7 @@
         />
       </div>
     } @else if (error() && !analytics()) {
-      <div class="glass-panel mt-4 p-10 text-center sm:mt-6">
+      <div class="glass-panel mt-4 p-10 text-center">
         <p class="eyebrow">تعذر التحميل</p>
         <h2 class="mt-2 text-lg font-bold text-ink-900">مقدرناش نفتح لوحة التحكم</h2>
         <p class="mt-2 text-sm text-ink-500">{{ error() }}</p>
@@ -74,17 +69,16 @@
         <p class="field-error mt-4 text-center">{{ error() }}</p>
       }
 
-      <div class="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-        <article class="glass-card glass-hover kpi-card">
+      <!-- Core KPIs -->
+      <div class="kpi-hero mt-4">
+        <article class="glass-card kpi-card">
           <p class="kpi-label">إجمالي التقييمات</p>
           <p class="kpi-value ltr-nums">{{ total() | number }}</p>
-          <p class="kpi-note">تقييم مسجّل في النظام</p>
         </article>
-
-        <article class="glass-card glass-hover kpi-card">
+        <article class="glass-card kpi-card">
           <p class="kpi-label">متوسط التقييم</p>
           <p class="kpi-value ltr-nums text-hope">{{ averageRating() | number: '1.1-1' }}</p>
-          <div class="mt-2">
+          <div class="mt-1">
             <app-star-rating
               [value]="averageStars()"
               [readOnly]="true"
@@ -93,20 +87,50 @@
             />
           </div>
         </article>
-
-        @for (kpi of kpis(); track kpi.key ?? kpi.title) {
-          <article class="glass-card glass-hover kpi-card">
-            <p class="kpi-label line-clamp-2">{{ kpiTitle(kpi) }}</p>
-            <p class="kpi-value ltr-nums">{{ kpi.percentage | number: '1.0-0' }}%</p>
-            <p class="kpi-note">نسبة الإجابة بنعم</p>
-          </article>
-        }
       </div>
 
-      <div class="mt-4 grid gap-3 sm:mt-6 sm:gap-4 lg:grid-cols-3">
-        <div class="glass-card glass-hover lg:col-span-2">
-          <h2 class="text-base font-bold text-ink-900">توزيع التقييم العام</h2>
-          <div class="mt-4 space-y-3 sm:mt-5">
+      @if (kpis().length) {
+        <div class="kpi-strip mt-3">
+          @for (kpi of kpis(); track kpi.key ?? kpi.title) {
+            <article class="kpi-mini">
+              <p class="kpi-mini-label" [title]="kpi.title">{{ kpiTitle(kpi) }}</p>
+              <p class="kpi-mini-value ltr-nums">{{ kpi.percentage | number: '1.0-0' }}%</p>
+            </article>
+          }
+        </div>
+      }
+
+      <!-- Insights with tabs so many questions don't stack -->
+      <div class="glass-panel mt-4 p-4 sm:p-5">
+        <div class="insight-tabs">
+          <button
+            type="button"
+            class="insight-tab"
+            [class.is-active]="insightTab() === 'distribution'"
+            (click)="setInsightTab('distribution')"
+          >
+            التوزيع
+          </button>
+          <button
+            type="button"
+            class="insight-tab"
+            [class.is-active]="insightTab() === 'averages'"
+            (click)="setInsightTab('averages')"
+          >
+            متوسطات الأسئلة
+          </button>
+          <button
+            type="button"
+            class="insight-tab"
+            [class.is-active]="insightTab() === 'choices'"
+            (click)="setInsightTab('choices')"
+          >
+            الاختيارات
+          </button>
+        </div>
+
+        @if (insightTab() === 'distribution') {
+          <div class="mt-4 space-y-3">
             @for (bar of distribution(); track bar.stars) {
               <div class="flex items-center gap-3">
                 <span class="ltr-nums w-9 shrink-0 text-xs text-ink-500">{{ bar.stars }} ★</span>
@@ -117,63 +141,70 @@
                   bar.count
                 }}</span>
               </div>
+            } @empty {
+              <p class="py-6 text-center text-sm text-ink-400">لا توجد بيانات بعد.</p>
             }
           </div>
-
-          <div class="hairline my-5"></div>
-
-          <h3 class="text-sm font-bold text-ink-800">متوسط كل بند</h3>
-          <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+        } @else if (insightTab() === 'averages') {
+          <div class="averages-grid mt-4">
             @for (item of questionAverages(); track item.questionId) {
-              <div class="glass-soft rounded-2xl px-2 py-3 text-center sm:px-4">
-                <span class="block text-xl sm:text-2xl" aria-hidden="true">{{
-                  averageIcon(item.icon)
-                }}</span>
-                <p class="mt-1 text-[0.68rem] leading-tight text-ink-500 sm:text-xs">
-                  {{ averageTitle(item) }}
-                </p>
-                <p class="ltr-nums mt-1 text-lg font-bold text-orange-500 sm:text-xl">
-                  {{ (item.average ?? 0) | number: '1.1-1' }}
-                </p>
+              <div class="average-card">
+                <span class="text-xl" aria-hidden="true">{{ averageIcon(item.icon) }}</span>
+                <p class="average-title">{{ averageTitle(item) }}</p>
+                <p class="ltr-nums average-score">{{ (item.average ?? 0) | number: '1.1-1' }}</p>
               </div>
+            } @empty {
+              <p class="col-span-full py-6 text-center text-sm text-ink-400">لا توجد متوسطات.</p>
             }
           </div>
-        </div>
-
-        <div class="glass-card glass-hover">
-          @for (breakdown of choiceBreakdowns(); track breakdown.questionId; let last = $last) {
-            <h2 class="text-base font-bold text-ink-900">{{ breakdownTitle(breakdown) }}</h2>
-            <ul class="mt-4 space-y-3 sm:mt-5">
-              @for (item of breakdown.options; track item.optionId) {
-                <li>
-                  <div class="mb-1 flex items-center justify-between text-xs">
-                    <span class="text-ink-700">{{ item.text }}</span>
-                    <span class="ltr-nums text-ink-400">
-                      {{ item.count }} · {{ item.percentage | number: '1.0-0' }}%
-                    </span>
-                  </div>
-                  <div class="h-2 overflow-hidden rounded-full bg-cream-300">
-                    <div
-                      class="h-full rounded-full"
-                      [class]="'tone-' + optionTone(item.value)"
-                      [style.width.%]="item.percentage"
-                    ></div>
-                  </div>
-                </li>
+        } @else {
+          @if (choiceBreakdowns().length) {
+            <div class="breakdown-picker mt-4">
+              @for (breakdown of choiceBreakdowns(); track breakdown.questionId) {
+                <button
+                  type="button"
+                  class="pill !px-3 !py-1.5 !text-xs"
+                  [class.pill-active]="activeBreakdown()?.questionId === breakdown.questionId"
+                  (click)="selectBreakdown(breakdown.questionId)"
+                >
+                  {{ breakdownTitle(breakdown) }}
+                </button>
               }
-            </ul>
-            @if (!last) {
-              <div class="hairline my-5"></div>
+            </div>
+
+            @if (activeBreakdown(); as breakdown) {
+              <ul class="mt-4 space-y-3">
+                @for (item of breakdown.options; track item.optionId) {
+                  <li>
+                    <div class="mb-1 flex items-center justify-between text-xs">
+                      <span class="text-ink-700">{{ item.text }}</span>
+                      <span class="ltr-nums text-ink-400">
+                        {{ item.count }} · {{ item.percentage | number: '1.0-0' }}%
+                      </span>
+                    </div>
+                    <div class="h-2 overflow-hidden rounded-full bg-cream-300">
+                      <div
+                        class="h-full rounded-full"
+                        [class]="'tone-' + optionTone(item.value)"
+                        [style.width.%]="item.percentage"
+                      ></div>
+                    </div>
+                  </li>
+                }
+              </ul>
             }
+          } @else {
+            <p class="mt-6 py-4 text-center text-sm text-ink-400">لا توجد أسئلة اختيارية.</p>
           }
-        </div>
+        }
       </div>
 
-      <div class="glass-panel mt-4 overflow-hidden p-4 sm:mt-6 sm:p-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div class="flex items-baseline justify-between gap-3">
+      <!-- Compact responses list -->
+      <div class="glass-panel mt-4 p-4 sm:p-5">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between gap-3">
             <h2 class="text-base font-bold text-ink-900">تقييمات العملاء</h2>
-            <span class="ltr-nums text-xs text-ink-400 sm:hidden">{{ filteredTotal() }}</span>
+            <span class="ltr-nums text-xs text-ink-400">{{ filteredTotal() }} نتيجة</span>
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -191,7 +222,7 @@
             </div>
             <input
               type="search"
-              class="glass-input w-full !py-2 text-sm sm:!w-56"
+              class="glass-input w-full !py-2 text-sm sm:ms-auto sm:!w-56"
               [value]="search()"
               (input)="onSearch($event)"
               placeholder="ابحث بالاسم أو الرقم…"
@@ -200,95 +231,92 @@
           </div>
         </div>
 
-        <div class="table-scroll mt-4 sm:mt-5">
-          <table class="data-table w-full text-sm sm:min-w-[64rem]">
-            <thead>
-              <tr>
-                <th>العميل</th>
-                <th>الموبايل</th>
-                <th>الفرع</th>
-                <th>العام</th>
-                @for (question of questions(); track question.id) {
-                  <th>{{ questionLabel(question) }}</th>
-                }
-                <th>التاريخ</th>
-                <th class="text-center">إجراء</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of rows(); track row.id) {
-                <tr>
-                  <td class="cell-name font-medium text-ink-900" data-label="العميل">
-                    {{ row.customerName || 'زائر' }}
-                  </td>
-                  <td class="ltr-nums text-ink-500" data-label="الموبايل">
-                    {{ row.phoneNumber || '—' }}
-                  </td>
-                  <td class="text-ink-700" data-label="الفرع">
-                    {{ row.branchName || '—' }}
-                  </td>
-                  <td data-label="التقييم العام">
+        <div class="response-list mt-4">
+          @for (row of rows(); track row.id) {
+            <article class="response-card" [class.is-open]="isExpanded(row.id)">
+              <div class="response-summary">
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="truncate font-bold text-ink-900">
+                      {{ row.customerName || 'زائر' }}
+                    </h3>
                     <app-star-rating
                       [value]="overallStars(row)"
                       [readOnly]="true"
                       size="sm"
                       ariaLabel="التقييم العام"
                     />
-                  </td>
+                  </div>
+                  <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-400">
+                    <span class="ltr-nums">{{ row.phoneNumber || '—' }}</span>
+                    @if (row.branchName) {
+                      <span>{{ row.branchName }}</span>
+                    }
+                    <span class="ltr-nums">{{ row.submittedAt | date: 'yyyy/MM/dd HH:mm' }}</span>
+                  </div>
+                </div>
+
+                <div class="response-actions">
+                  <button
+                    type="button"
+                    class="btn-ghost !px-3 !py-2 text-xs"
+                    (click)="toggleExpand(row.id)"
+                    [attr.aria-expanded]="isExpanded(row.id)"
+                  >
+                    {{ isExpanded(row.id) ? 'إخفاء' : 'التفاصيل' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="row-delete"
+                    (click)="remove(row.id)"
+                    [disabled]="deletingId() === row.id"
+                    [attr.aria-label]="'حذف تقييم ' + (row.customerName || '')"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              @if (isExpanded(row.id)) {
+                <div class="response-details">
                   @for (question of questions(); track question.id) {
-                    <td
-                      [attr.data-label]="questionLabel(question)"
-                      [class.ltr-nums]="!isText(question) && !isChoice(question) && !isMulti(question)"
-                      [class.text-ink-700]="!isChoice(question)"
-                      [class.sm:text-center]="!isText(question) && !isMulti(question)"
-                      [class.cell-suggestion]="isText(question) || isMulti(question)"
-                      [class.text-ink-500]="isText(question) || isMulti(question)"
-                      [class.sm:max-w-xs]="isText(question) || isMulti(question)"
-                    >
+                    <div class="detail-row">
+                      <span class="detail-q">{{ questionLabel(question) }}</span>
                       @if (isChoice(question)) {
                         <span
                           class="chip"
-                          [class]="'chip-' + optionTone(answer(row, question.id)?.selectedOptionValue ?? null)"
+                          [class]="
+                            'chip-' +
+                            optionTone(answer(row, question.id)?.selectedOptionValue ?? null)
+                          "
                         >
                           {{ answerText(row, question) }}
                         </span>
-                      } @else if (isText(question) || isMulti(question)) {
-                        <span class="line-clamp-2">{{ answerText(row, question) }}</span>
                       } @else {
-                        {{ answerText(row, question) }}
+                        <span
+                          class="detail-a"
+                          [class.ltr-nums]="!isText(question) && !isMulti(question)"
+                        >
+                          {{ answerText(row, question) }}
+                        </span>
                       }
-                    </td>
+                    </div>
+                  } @empty {
+                    <p class="text-sm text-ink-400">لا توجد أسئلة.</p>
                   }
-                  <td class="ltr-nums text-ink-400 sm:whitespace-nowrap" data-label="التاريخ">
-                    {{ row.submittedAt | date: 'yyyy/MM/dd HH:mm' }}
-                  </td>
-                  <td class="cell-actions sm:text-center">
-                    <button
-                      type="button"
-                      class="row-delete"
-                      (click)="remove(row.id)"
-                      [disabled]="deletingId() === row.id"
-                      [attr.aria-label]="'حذف تقييم ' + (row.customerName || '')"
-                    >
-                      <span class="row-delete-icon" aria-hidden="true">✕</span>
-                      <span class="row-delete-text">حذف التقييم</span>
-                    </button>
-                  </td>
-                </tr>
-              } @empty {
-                <tr class="empty-row">
-                  <td [attr.colspan]="tableColspan()" class="empty-cell py-12 text-center sm:py-14">
-                    <p class="text-ink-400">لا توجد تقييمات مطابقة.</p>
-                  </td>
-                </tr>
+                </div>
               }
-            </tbody>
-          </table>
+            </article>
+          } @empty {
+            <div class="py-12 text-center">
+              <p class="text-ink-400">لا توجد تقييمات مطابقة.</p>
+            </div>
+          }
         </div>
       </div>
     }
 
-    <p class="mt-5 text-center text-[0.7rem] text-ink-300 sm:mt-6">
+    <p class="mt-5 text-center text-[0.7rem] text-ink-300">
       BubbleCore © لوحة تحكم داخلية — البيانات محفوظة على سيرفر التقييم.
     </p>
   </div>
