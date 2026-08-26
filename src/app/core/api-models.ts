@@ -6,11 +6,25 @@ export type QuestionType =
   | 'YesNo'
   | 'Number';
 
+export interface SurveyDiscount {
+  enabled: boolean;
+  percent: number;
+  codePrefix: string;
+  validityDays: number;
+}
+
+export interface PublicSurveyDiscount {
+  enabled: boolean;
+  percent: number;
+  validityDays: number;
+}
+
 export interface PublicSurvey {
   id: number;
   slug: string;
   title: string;
   description: string | null;
+  discount?: PublicSurveyDiscount | null;
   branches: PublicBranch[];
   questions: PublicQuestion[];
 }
@@ -67,6 +81,60 @@ export interface SubmitSurveyResult {
   submittedAt: string;
 }
 
+export interface DiscountSession {
+  clientUuid: string;
+}
+
+export interface DiscountCheck {
+  hasCode: boolean;
+  discountEnabled: boolean;
+  code: string | null;
+  discountPercent: number | null;
+  expiresAt: string | null;
+  status: number | string | null;
+  usedBefore: boolean;
+  expiredBefore: boolean;
+  message: string | null;
+}
+
+export interface IssueDiscountRequest {
+  feedbackId: number;
+  customerName: string;
+  mobile: string;
+  deviceFingerprint?: string | null;
+  clientUuid?: string | null;
+}
+
+export interface IssueDiscountResult {
+  hasActiveCode: boolean;
+  code: string | null;
+  discountPercent: number | null;
+  expiresAt: string | null;
+  status: number | string | null;
+  alreadyIssued: boolean;
+  message?: string | null;
+}
+
+/** 1 Active · 2 Used · 3 Expired · 4 Revoked */
+export type DiscountCodeStatusValue = 1 | 2 | 3 | 4;
+
+export interface DiscountCodeRow {
+  id: number;
+  code: string;
+  status: number | string;
+  discountPercent: number | null;
+  customerName: string | null;
+  mobile?: string | null;
+  phoneNumber?: string | null;
+  expiresAt: string | null;
+  usedAt: string | null;
+  issuedAt?: string | null;
+}
+
+export interface UpdateDiscountCodeRequest {
+  status: DiscountCodeStatusValue;
+}
+
 export interface Branch {
   id: number;
   name: string;
@@ -81,6 +149,7 @@ export interface SurveyListItem {
   questionsCount: number;
   responsesCount: number;
   createdAt: string;
+  discountEnabled?: boolean;
 }
 
 export interface SurveyDetails {
@@ -92,6 +161,7 @@ export interface SurveyDetails {
   isPublished: boolean;
   createdAt: string;
   updatedAt: string | null;
+  discount?: SurveyDiscount | null;
   branches: BranchDetails[];
   questions: QuestionDetails[];
 }
@@ -219,6 +289,7 @@ export interface SaveSurvey {
   title: string;
   description?: string | null;
   slug?: string | null;
+  discount: SurveyDiscount;
   branches: SaveBranch[];
   questions: SaveQuestion[];
 }

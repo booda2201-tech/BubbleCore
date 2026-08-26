@@ -33,6 +33,16 @@
   }
 }
 
+.editor-check-inline {
+  min-height: auto;
+  padding-top: 0;
+  flex-shrink: 0;
+}
+
+.editor-discount-off {
+  opacity: 0.55;
+}
+
 .editor-icon-btn {
   display: grid;
   place-items: center;

@@ -29,7 +29,11 @@
     <div class="text-center">
       <h2 class="text-xl font-bold text-ink-900 sm:text-2xl">أهلاً بك في بابل هوب</h2>
       <p class="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-500">
-        رأيك يصنع الفرق. شاركنا تجربتك في أقل من دقيقة واحصل على خدمة أفضل في زيارتك القادمة.
+        @if (discountEnabled()) {
+          رأيك يصنع الفرق. شارك تقييمك في أقل من دقيقة واحصل على كود خصم لزيارتك الجاية.
+        } @else {
+          رأيك يصنع الفرق. شاركنا تجربتك في أقل من دقيقة واحصل على خدمة أفضل في زيارتك القادمة.
+        }
       </p>
     </div>
 
@@ -61,9 +65,13 @@
           formControlName="phone"
           placeholder="01xxxxxxxxx"
           autocomplete="tel"
+          (input)="onPhoneInput()"
+          (blur)="onPhoneBlur()"
         />
         @if (invalid('phone')) {
           <p class="field-error">من فضلك أدخل رقم موبايل صحيح</p>
+        } @else if (discountHint()) {
+          <p class="discount-hint">{{ discountHint() }}</p>
         }
       </div>
 
@@ -73,11 +81,14 @@
           <app-modern-select
             class="mt-1 block"
             [options]="branchOptions()"
-            placeholder="اختياري — اختر الفرع"
+            placeholder="اختاري الفرع"
             ariaLabel="الفرع"
             [value]="selectedBranch()"
-            (valueChange)="selectedBranch.set($event)"
+            (valueChange)="onBranchChange($event)"
           />
+          @if (branchMissing()) {
+            <p class="field-error">من فضلك اختاري الفرع</p>
+          }
         </div>
       }
 
@@ -102,7 +113,7 @@
     >
       <div class="glass-panel animate-rise w-full max-w-sm p-7" (click)="$event.stopPropagation()">
         <div class="flex items-center justify-between gap-4">
-          <h3 id="admin-gate-title" class="text-lg font-bold text-ink-900">دخول المسؤول</h3>
+          <h3 id="admin-gate-title" class="text-lg font-bold text-ink-900">دخول الموظفين</h3>
           <button
             type="button"
             class="grid h-8 w-8 place-items-center rounded-full text-ink-400 transition hover:bg-cream-200 hover:text-ink-900"

@@ -1,7 +1,8 @@
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { PublicQuestion, SubmitAnswer } from '../../core/api-models';
+import { IssueDiscountResult, PublicQuestion, SubmitAnswer } from '../../core/api-models';
+import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
 import { displayIcon } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
@@ -19,13 +20,14 @@ const NOTES_MAX = 500;
 
 @Component({
   selector: 'app-feedback',
-  imports: [StarRatingComponent, DecimalPipe],
+  imports: [StarRatingComponent, DecimalPipe, DatePipe],
   templateUrl: './feedback.html',
   styleUrl: './feedback.scss',
 })
 export class FeedbackComponent {
   private readonly store = inject(FeedbackStore);
   private readonly api = inject(SurveyApi);
+  private readonly discount = inject(DiscountClient);
   private readonly router = inject(Router);
 
   protected readonly customer = this.store.customer;
@@ -40,6 +42,22 @@ export class FeedbackComponent {
   protected readonly submitError = signal('');
   protected readonly stepHint = signal('');
   protected readonly notesMax = NOTES_MAX;
+  protected readonly issuing = signal(false);
+  protected readonly discountIssue = signal<IssueDiscountResult | null>(null);
+  protected readonly discountError = signal('');
+  protected readonly codeCopied = signal(false);
+
+  protected readonly discountEnabled = computed(
+    () => this.survey()?.discount?.enabled === true,
+  );
+
+  protected readonly issuedCode = computed(() => this.discountIssue()?.code?.trim() || '');
+
+  protected readonly discountPercent = computed(() => {
+    const issued = this.discountIssue()?.discountPercent;
+    if (typeof issued === 'number' && issued > 0) return issued;
+    return this.survey()?.discount?.percent ?? null;
+  });
 
   protected readonly questions = computed(() =>
     [...(this.survey()?.questions ?? [])].sort((a, b) => a.order - b.order),
@@ -112,6 +130,7 @@ export class FeedbackComponent {
 
   constructor() {
     void this.loadSurvey();
+    void this.discount.ensureSession();
   }
 
   protected icon(value?: string | null): string {
@@ -238,18 +257,45 @@ export class FeedbackComponent {
 
     try {
       const notes = this.notes().trim();
-      await this.api.submitPublicResponse({
+      const submitted = await this.api.submitPublicResponse({
         customerName: customer?.name ?? 'زائر',
         phoneNumber: customer?.phone || null,
         branchId: customer?.branchId,
         notes: notes || null,
         answers: this.buildAnswers(),
       });
+      this.feedbackId = submitted.id;
       this.submitted.set(true);
+
+      if (this.discountEnabled() && customer?.phone) {
+        void this.issueDiscount(submitted.id);
+      }
     } catch (error) {
       this.submitError.set(errorMessage(error));
     } finally {
       this.submitting.set(false);
+    }
+  }
+
+  protected retryDiscount(): void {
+    if (this.feedbackId === null || this.issuing()) return;
+    void this.issueDiscount(this.feedbackId);
+  }
+
+  protected async copyCode(): Promise<void> {
+    const code = this.issuedCode();
+    if (!code) return;
+
+    try {
+      await navigator.clipboard.writeText(code);
+      this.codeCopied.set(true);
+      if (this.copyResetTimer) clearTimeout(this.copyResetTimer);
+      this.copyResetTimer = setTimeout(() => {
+        this.copyResetTimer = null;
+        this.codeCopied.set(false);
+      }, 1800);
+    } catch {
+      this.codeCopied.set(false);
     }
   }
 
@@ -270,7 +316,9 @@ export class FeedbackComponent {
     return this.notes().trim().length > 0;
   }
 
+  private feedbackId: number | null = null;
   private advanceTimer: ReturnType<typeof setTimeout> | null = null;
+  private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   private clearAdvanceTimer(): void {
     if (this.advanceTimer) {
@@ -290,6 +338,36 @@ export class FeedbackComponent {
         this.step.update((value) => Math.min(value + 1, this.totalSteps() - 1));
       }
     }, 280);
+  }
+
+  private async issueDiscount(feedbackId: number): Promise<void> {
+    const customer = this.customer();
+    const mobile = customer?.phone?.trim();
+    if (!mobile) {
+      this.discountError.set('محتاجين رقم الموبايل عشان نطلع كود الخصم.');
+      return;
+    }
+
+    this.issuing.set(true);
+    this.discountError.set('');
+
+    try {
+      const clientUuid = await this.discount.ensureSession();
+      const fingerprint = this.discount.fingerprint();
+      const issued = await this.api.issueDiscount({
+        feedbackId,
+        customerName: customer?.name?.trim() || 'زائر',
+        mobile,
+        ...(fingerprint ? { deviceFingerprint: fingerprint } : {}),
+        ...(clientUuid ? { clientUuid } : {}),
+      });
+      this.discountIssue.set(issued);
+    } catch (error) {
+      this.discountIssue.set(null);
+      this.discountError.set(errorMessage(error));
+    } finally {
+      this.issuing.set(false);
+    }
   }
 
   private async loadSurvey(): Promise<void> {

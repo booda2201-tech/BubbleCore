@@ -1,6 +1,6 @@
 import { Service, computed, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
-import { AuthUser, LoginResponse } from './api-models';
+import { AuthUser, AuthUserSurvey, LoginResponse } from './api-models';
 
 const TOKEN_KEY = 'bubblecore.admin.token';
 const USER_KEY = 'bubblecore.admin.user';
@@ -21,7 +21,25 @@ export class AdminAuth {
   }
 
   hasSurveyAccess(slug = environment.surveySlug): boolean {
-    return this.userState()?.surveys.some((survey) => survey.slug === slug) ?? false;
+    return !!this.surveyAccess(slug);
+  }
+
+  surveyAccess(slug = environment.surveySlug): AuthUserSurvey | null {
+    return this.userState()?.surveys.find((survey) => survey.slug === slug) ?? null;
+  }
+
+  isAdmin(slug = environment.surveySlug): boolean {
+    return normalizeRole(this.surveyAccess(slug)?.role) === 'admin';
+  }
+
+  isCashier(slug = environment.surveySlug): boolean {
+    return normalizeRole(this.surveyAccess(slug)?.role) === 'cashier';
+  }
+
+  homeRoute(slug = environment.surveySlug): string {
+    if (this.isAdmin(slug)) return '/admin';
+    if (this.isCashier(slug)) return '/cashier';
+    return '/';
   }
 
   lock(): void {
@@ -60,4 +78,8 @@ export class AdminAuth {
       return null;
     }
   }
+}
+
+function normalizeRole(role?: string | null): string {
+  return (role ?? '').trim().toLowerCase();
 }

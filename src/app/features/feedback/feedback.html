@@ -273,6 +273,49 @@
           />
         </div>
 
+        @if (discountEnabled()) {
+          <div class="hairline my-5 sm:my-7"></div>
+
+          @if (issuing()) {
+            <p class="text-sm text-ink-500">جاري تجهيز كود الخصم…</p>
+          } @else if (issuedCode()) {
+            <p class="eyebrow">كود الخصم بتاعك</p>
+            @if (discountIssue()?.alreadyIssued) {
+              <p class="mt-2 text-xs text-ink-400">الكود ده اتعمل قبل كده.</p>
+            }
+
+            <div class="code-card mt-4">
+              <p class="code-value ltr-nums">{{ issuedCode() }}</p>
+              @if (discountPercent(); as percent) {
+                <p class="mt-2 text-sm font-semibold text-hope">خصم {{ percent }}%</p>
+              }
+              @if (discountIssue()?.expiresAt; as expiresAt) {
+                <p class="ltr-nums mt-1 text-xs text-ink-400">
+                  صالح حتى {{ expiresAt | date: 'yyyy/MM/dd' }} — استخدمه مرة واحدة
+                </p>
+              } @else {
+                <p class="mt-1 text-xs text-ink-400">استخدمه مرة واحدة في زيارتك الجاية</p>
+              }
+            </div>
+
+            <button type="button" class="btn-ghost mt-4 w-full" (click)="copyCode()">
+              {{ codeCopied() ? 'تم النسخ' : 'نسخ الكود' }}
+            </button>
+          } @else if (discountError()) {
+            <p class="field-error">{{ discountError() }}</p>
+            <button
+              type="button"
+              class="btn-ghost mt-4 w-full"
+              [disabled]="issuing()"
+              (click)="retryDiscount()"
+            >
+              إعادة محاولة كود الخصم
+            </button>
+          } @else if (discountIssue()?.message; as message) {
+            <p class="text-sm leading-relaxed text-ink-500">{{ message }}</p>
+          }
+        }
+
         <div class="hairline my-5 sm:my-7"></div>
 
         <button type="button" class="btn-primary w-full" (click)="finish()">العودة للرئيسية</button>

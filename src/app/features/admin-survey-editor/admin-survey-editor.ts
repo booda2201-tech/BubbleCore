@@ -6,6 +6,7 @@ import {
   SaveQuestion,
   SaveSurvey,
   SurveyDetails,
+  SurveyDiscount,
 } from '../../core/api-models';
 import { displayIcon } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
@@ -40,13 +41,28 @@ interface EditorBranch {
   isActive: boolean;
 }
 
+interface EditorDiscount {
+  enabled: boolean;
+  percent: number;
+  codePrefix: string;
+  validityDays: number;
+}
+
 interface EditorDraft {
   title: string;
   description: string;
   slug: string;
+  discount: EditorDiscount;
   branches: EditorBranch[];
   questions: EditorQuestion[];
 }
+
+const DEFAULT_DISCOUNT: EditorDiscount = {
+  enabled: false,
+  percent: 5,
+  codePrefix: 'BH-',
+  validityDays: 30,
+};
 
 const QUESTION_TYPES: readonly { id: QuestionType; label: string }[] = [
   { id: 'Rating', label: 'تقييم بالنجوم' },
@@ -99,6 +115,24 @@ export class AdminSurveyEditorComponent {
 
   protected onDescription(event: Event): void {
     this.patchDraft({ description: inputValue(event) });
+  }
+
+  protected onDiscountEnabled(event: Event): void {
+    this.patchDiscount({ enabled: (event.target as HTMLInputElement).checked });
+  }
+
+  protected onDiscountPercent(event: Event): void {
+    const raw = inputValue(event);
+    this.patchDiscount({ percent: raw === '' ? 0 : Number(raw) });
+  }
+
+  protected onDiscountDays(event: Event): void {
+    const raw = inputValue(event);
+    this.patchDiscount({ validityDays: raw === '' ? 0 : Number(raw) });
+  }
+
+  protected onDiscountPrefix(event: Event): void {
+    this.patchDiscount({ codePrefix: inputValue(event) });
   }
 
   protected onBranchName(localId: string, event: Event): void {
@@ -266,6 +300,12 @@ export class AdminSurveyEditorComponent {
     this.draft.update((current) => (current ? { ...current, ...partial } : current));
   }
 
+  private patchDiscount(partial: Partial<EditorDiscount>): void {
+    this.patchDraft({
+      discount: { ...this.draftOrThrow().discount, ...partial },
+    });
+  }
+
   private updateQuestion(localId: string, partial: Partial<EditorQuestion>): void {
     this.patchDraft({
       questions: this.draftOrThrow().questions.map((question) =>
@@ -309,6 +349,7 @@ function toDraft(survey: SurveyDetails): EditorDraft {
     title: survey.title,
     description: survey.description ?? '',
     slug: survey.slug,
+    discount: toDiscountDraft(survey.discount),
     branches: (survey.branches ?? []).map((branch) => ({
       localId: uid(),
       id: branch.id,
@@ -347,6 +388,7 @@ function toPayload(draft: EditorDraft): SaveSurvey {
     title: draft.title.trim(),
     description: draft.description.trim() || null,
     slug: draft.slug,
+    discount: toDiscountPayload(draft.discount),
     branches: draft.branches
       .filter((branch) => branch.name.trim().length > 0)
       .map((branch, index) => ({
@@ -357,6 +399,56 @@ function toPayload(draft: EditorDraft): SaveSurvey {
       })),
     questions: draft.questions.map((question, index) => toQuestionPayload(question, index)),
   };
+}
+
+function toDiscountDraft(discount?: SurveyDiscount | null): EditorDiscount {
+  return {
+    enabled: discount?.enabled ?? DEFAULT_DISCOUNT.enabled,
+    percent: discount?.percent ?? DEFAULT_DISCOUNT.percent,
+    codePrefix: discount?.codePrefix ?? DEFAULT_DISCOUNT.codePrefix,
+    validityDays: discount?.validityDays ?? DEFAULT_DISCOUNT.validityDays,
+  };
+}
+
+function toDiscountPayload(discount: EditorDiscount): SurveyDiscount {
+  return {
+    enabled: discount.enabled,
+    percent: Number.isFinite(discount.percent) ? discount.percent : DEFAULT_DISCOUNT.percent,
+    codePrefix: normalizePrefix(discount.codePrefix) || DEFAULT_DISCOUNT.codePrefix,
+    validityDays: Number.isFinite(discount.validityDays)
+      ? discount.validityDays
+      : DEFAULT_DISCOUNT.validityDays,
+  };
+}
+
+function validateDiscount(discount: EditorDiscount): string | null {
+  if (!discount.enabled) return null;
+
+  if (!Number.isFinite(discount.percent) || discount.percent < 1 || discount.percent > 100) {
+    return 'نسبة الخصم لازم تكون من 1 لـ 100.';
+  }
+
+  if (
+    !Number.isFinite(discount.validityDays) ||
+    discount.validityDays < 1 ||
+    discount.validityDays > 365
+  ) {
+    return 'مدة صلاحية الكود لازم تكون من 1 لـ 365 يوم.';
+  }
+
+  const prefix = normalizePrefix(discount.codePrefix);
+  if (!prefix) return 'بادئة كود الخصم مطلوبة عند تفعيل الخصم.';
+  if (prefix.length > 10 || !prefix.endsWith('-')) {
+    return 'بادئة كود الخصم لازم تنتهي بـ - (مثال: BH-).';
+  }
+
+  return null;
+}
+
+function normalizePrefix(value: string): string {
+  const trimmed = value.trim().toUpperCase();
+  if (!trimmed) return '';
+  return trimmed.endsWith('-') ? trimmed : `${trimmed}-`;
 }
 
 function toQuestionPayload(question: EditorQuestion, index: number): SaveQuestion {
@@ -391,6 +483,9 @@ function toQuestionPayload(question: EditorQuestion, index: number): SaveQuestio
 function validateDraft(draft: EditorDraft): string | null {
   if (!draft.title.trim()) return 'عنوان الفورم مطلوب.';
   if (!draft.questions.length) return 'أضيفي سؤال واحد على الأقل.';
+
+  const discountError = validateDiscount(draft.discount);
+  if (discountError) return discountError;
 
   for (const question of draft.questions) {
     if (!question.title.trim()) return 'كل سؤال محتاج عنوان.';

@@ -1,0 +1,126 @@
+.cashier-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cashier-logo {
+  width: 4rem;
+  height: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgb(242 107 9 / 0.18));
+
+  @media (min-width: 640px) {
+    width: 5rem;
+  }
+}
+
+.search-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.cashier-success {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+.code-card {
+  padding: 1.1rem 1rem 1.15rem;
+  border-radius: 1.25rem;
+}
+
+.code-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.code-label {
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgb(26 36 51 / 0.5);
+}
+
+.code-value {
+  margin: 0.15rem 0 0;
+  font-size: clamp(1.25rem, 4vw, 1.65rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #1a2433;
+  word-break: break-all;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-badge--active {
+  color: #0f766e;
+  background: rgb(43 182 175 / 0.12);
+}
+
+.status-badge--used {
+  color: #b45309;
+  background: rgb(242 107 9 / 0.12);
+}
+
+.status-badge--expired,
+.status-badge--revoked,
+.status-badge--unknown {
+  color: #c44646;
+  background: rgb(196 70 70 / 0.1);
+}
+
+.code-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 1rem 0 0;
+
+  div {
+    min-width: 0;
+  }
+
+  dt {
+    margin: 0;
+    font-size: 0.68rem;
+    color: rgb(26 36 51 / 0.45);
+  }
+
+  dd {
+    margin: 0.15rem 0 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1a2433;
+  }
+}
+
+.code-note {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: rgb(26 36 51 / 0.55);
+}
+
+.code-card--active {
+  border-color: rgb(43 182 175 / 0.28);
+}
+
+.code-card--used {
+  border-color: rgb(242 107 9 / 0.22);
+}
+
+.code-card--expired,
+.code-card--revoked {
+  opacity: 0.92;
+}

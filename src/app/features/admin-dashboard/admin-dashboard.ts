@@ -383,6 +383,12 @@ function toSaveSurveyWithNotes(details: SurveyDetails): SaveSurvey {
     title: details.title,
     description: details.description,
     slug: details.slug,
+    discount: details.discount ?? {
+      enabled: false,
+      percent: 5,
+      codePrefix: 'BH-',
+      validityDays: 30,
+    },
     branches: [...details.branches]
       .sort((a, b) => a.order - b.order)
       .map((branch, index) => ({

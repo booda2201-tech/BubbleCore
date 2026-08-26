@@ -1,0 +1,124 @@
+<section class="relative min-h-dvh overflow-hidden px-3 py-5 sm:px-6 sm:py-8">
+  <div class="orb h-80 w-80 bg-orange-500/25 -top-24 start-1/4 animate-float"></div>
+  <div
+    class="orb h-72 w-72 bg-teal-400/25 bottom-0 end-0 animate-float [animation-delay:-4s]"
+  ></div>
+
+  <div class="animate-rise relative z-10 mx-auto w-full max-w-xl">
+    <header class="glass-panel cashier-header p-4 sm:p-5">
+      <div class="flex items-center gap-3">
+        <img class="cashier-logo" src="assets/logo.png" alt="Bubble Hope" width="512" height="315" />
+        <div class="min-w-0 flex-1">
+          <p class="eyebrow">كاشير — التحقق من الخصم</p>
+          <h1 class="truncate text-base font-bold text-ink-900 sm:text-lg">{{ surveyTitle() }}</h1>
+          @if (staffName()) {
+            <p class="mt-0.5 text-xs text-ink-400">مرحباً {{ staffName() }}</p>
+          }
+        </div>
+      </div>
+      <button type="button" class="btn-ghost shrink-0" (click)="logout()">خروج</button>
+    </header>
+
+    <div class="glass-panel mt-4 p-4 sm:p-5">
+      <label class="field-label" for="code-search">ابحث بالكود أو رقم الموبايل</label>
+      <div class="search-row">
+        <input
+          id="code-search"
+          type="search"
+          class="glass-input ltr-nums text-start"
+          [value]="query()"
+          placeholder="BH-XXXXXX أو 01xxxxxxxxx"
+          autocomplete="off"
+          (input)="onQueryInput($event)"
+          (keydown)="onQueryKeydown($event)"
+        />
+        <button type="button" class="btn-primary shrink-0" [disabled]="loading()" (click)="search()">
+          {{ loading() ? 'جاري البحث…' : 'بحث' }}
+        </button>
+      </div>
+      <p class="mt-2 text-xs leading-relaxed text-ink-400">
+        بعد ما العميل يستفيد بالخصم، علّمي الكود «مستخدم» عشان ميتكررش.
+      </p>
+    </div>
+
+    @if (error()) {
+      <p class="field-error mt-4 text-center">{{ error() }}</p>
+    }
+    @if (success()) {
+      <p class="cashier-success mt-4 text-center">{{ success() }}</p>
+    }
+
+    @if (loading()) {
+      <div class="glass-panel mt-4 p-8 text-center">
+        <p class="text-sm text-ink-500">جاري البحث عن الكود…</p>
+      </div>
+    } @else if (searched() && !codes().length) {
+      <div class="glass-panel mt-4 p-8 text-center">
+        <p class="text-sm text-ink-500">مفيش كود مطابق للبحث ده.</p>
+      </div>
+    } @else {
+      <div class="mt-4 space-y-3">
+        @for (code of codes(); track code.id) {
+          @let meta = statusOf(code.status);
+          <article class="glass-card code-card" [class]="'code-card--' + meta.tone">
+            <div class="code-card-head">
+              <div>
+                <p class="code-label">كود الخصم</p>
+                <p class="code-value ltr-nums">{{ code.code }}</p>
+              </div>
+              <span class="status-badge" [class]="'status-badge--' + meta.tone">{{ meta.label }}</span>
+            </div>
+
+            <dl class="code-meta">
+              @if (code.customerName) {
+                <div>
+                  <dt>العميل</dt>
+                  <dd>{{ code.customerName }}</dd>
+                </div>
+              }
+              <div>
+                <dt>الموبايل</dt>
+                <dd class="ltr-nums">{{ mobileOf(code) }}</dd>
+              </div>
+              @if (code.discountPercent != null) {
+                <div>
+                  <dt>الخصم</dt>
+                  <dd>{{ code.discountPercent }}%</dd>
+                </div>
+              }
+              @if (code.expiresAt) {
+                <div>
+                  <dt>ينتهي</dt>
+                  <dd class="ltr-nums">{{ code.expiresAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+                </div>
+              }
+              @if (code.usedAt) {
+                <div>
+                  <dt>اتستخدم</dt>
+                  <dd class="ltr-nums">{{ code.usedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+                </div>
+              }
+            </dl>
+
+            @if (meta.canRedeem) {
+              <button
+                type="button"
+                class="btn-primary mt-4 w-full"
+                [disabled]="redeemingId() === code.id"
+                (click)="redeem(code)"
+              >
+                {{
+                  redeemingId() === code.id ? 'جاري التأكيد…' : 'تأكيد استخدام الخصم'
+                }}
+              </button>
+            } @else if (meta.tone === 'used') {
+              <p class="code-note mt-4">الكود ده اتعلّم مستخدم قبل كده.</p>
+            } @else {
+              <p class="code-note mt-4">الكود ده مش متاح للاستخدام.</p>
+            }
+          </article>
+        }
+      </div>
+    }
+  </div>
+</section>

@@ -1,7 +1,9 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AdminAuth } from '../../core/admin-auth';
+import { DiscountCheck } from '../../core/api-models';
+import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
 import { ChoiceOption } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
@@ -26,6 +28,7 @@ export class WelcomeComponent {
   private readonly store = inject(FeedbackStore);
   private readonly auth = inject(AdminAuth);
   private readonly api = inject(SurveyApi);
+  private readonly discount = inject(DiscountClient);
 
   private readonly identityField = viewChild<ElementRef<HTMLInputElement>>('identityField');
 
@@ -39,6 +42,7 @@ export class WelcomeComponent {
 
   protected readonly branchOptions = signal<ChoiceOption[]>([]);
   protected readonly selectedBranch = signal<string | null>(null);
+  protected readonly branchTouched = signal(false);
 
   protected readonly adminGateOpen = signal(false);
   protected readonly adminEmailOrPhone = signal('');
@@ -47,15 +51,29 @@ export class WelcomeComponent {
   protected readonly adminError = signal('');
   protected readonly adminBusy = signal(false);
 
+  protected readonly discountCheck = signal<DiscountCheck | null>(null);
+  protected readonly discountEnabled = computed(
+    () => this.store.survey()?.discount?.enabled === true,
+  );
+  protected readonly discountHint = computed(() => discountHintMessage(this.discountCheck()));
+  protected readonly branchMissing = computed(
+    () => this.branchTouched() && this.branchOptions().length > 0 && !this.selectedBranch(),
+  );
+
   constructor() {
     void this.loadSurvey();
+    void this.discount.ensureSession();
   }
 
   protected start(): void {
+    this.branchTouched.set(true);
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
+
+    if (this.branchOptions().length && !this.selectedBranch()) return;
 
     const { name, phone } = this.form.getRawValue();
     const branchId = this.selectedBranch() ? Number(this.selectedBranch()) : null;
@@ -81,7 +99,7 @@ export class WelcomeComponent {
 
   protected openAdminGate(): void {
     if (this.auth.isUnlocked()) {
-      this.router.navigate(['/admin']);
+      this.router.navigate([this.auth.homeRoute()]);
       return;
     }
 
@@ -126,8 +144,15 @@ export class WelcomeComponent {
         return;
       }
 
+      const route = this.auth.homeRoute();
+      if (route === '/') {
+        this.auth.lock();
+        this.adminError.set('الحساب ده مش مربوط بدور مسموح (Admin أو Cashier).');
+        return;
+      }
+
       this.adminGateOpen.set(false);
-      this.router.navigate(['/admin']);
+      this.router.navigate([route]);
     } catch (error) {
       this.adminError.set(loginErrorMessage(error));
       this.adminPassword.set('');
@@ -139,6 +164,19 @@ export class WelcomeComponent {
   protected invalid(control: 'name' | 'phone'): boolean {
     const field = this.form.controls[control];
     return field.invalid && (field.touched || field.dirty);
+  }
+
+  protected onPhoneInput(): void {
+    this.scheduleDiscountCheck();
+  }
+
+  protected onPhoneBlur(): void {
+    this.scheduleDiscountCheck(0);
+  }
+
+  protected onBranchChange(value: string | null): void {
+    this.selectedBranch.set(value);
+    this.branchTouched.set(true);
   }
 
   private async loadSurvey(): Promise<void> {
@@ -159,6 +197,59 @@ export class WelcomeComponent {
       this.branchOptions.set([]);
     }
   }
+
+  private checkTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastCheckedPhone = '';
+
+  private scheduleDiscountCheck(delayMs = 450): void {
+    if (this.checkTimer) {
+      clearTimeout(this.checkTimer);
+      this.checkTimer = null;
+    }
+
+    const phone = this.form.controls.phone.value.trim();
+    if (this.form.controls.phone.invalid || !phone) {
+      this.discountCheck.set(null);
+      this.lastCheckedPhone = '';
+      return;
+    }
+
+    if (this.store.survey() && this.store.survey()?.discount?.enabled !== true) {
+      this.discountCheck.set(null);
+      return;
+    }
+
+    this.checkTimer = setTimeout(() => {
+      this.checkTimer = null;
+      void this.runDiscountCheck(phone);
+    }, delayMs);
+  }
+
+  private async runDiscountCheck(phone: string): Promise<void> {
+    if (phone === this.lastCheckedPhone) return;
+    this.lastCheckedPhone = phone;
+
+    try {
+      this.discountCheck.set(await this.api.checkDiscount(phone));
+    } catch {
+      this.discountCheck.set(null);
+      this.lastCheckedPhone = '';
+    }
+  }
+}
+
+function discountHintMessage(check: DiscountCheck | null): string {
+  if (!check) return '';
+  if (check.hasCode) {
+    return 'الرقم ده عنده كود خصم فعال. هيتظهر بعد ما تخلّص التقييم.';
+  }
+  if (check.usedBefore) {
+    return 'الرقم ده استخدم كود الخصم قبل كده. تقدر تقيّم عادي.';
+  }
+  if (check.expiredBefore) {
+    return 'كود الخصم السابق على الرقم ده انتهى. تقدر تقيّم عادي.';
+  }
+  return check.message?.trim() ?? '';
 }
 
 function loginErrorMessage(error: unknown): string {

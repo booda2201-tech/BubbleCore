@@ -5,6 +5,11 @@ import { environment } from '../../environments/environment';
 import {
   AuthUser,
   Branch,
+  DiscountCodeRow,
+  DiscountCheck,
+  DiscountSession,
+  IssueDiscountRequest,
+  IssueDiscountResult,
   LoginRequest,
   LoginResponse,
   PagedResult,
@@ -17,6 +22,7 @@ import {
   SurveyDetails,
   SurveyListItem,
   SurveyResponseRow,
+  UpdateDiscountCodeRequest,
 } from './api-models';
 
 export class ApiRequestError extends Error {
@@ -54,6 +60,52 @@ export class SurveyApi {
     slug = environment.surveySlug,
   ): Promise<SubmitSurveyResult> {
     return this.post<SubmitSurveyResult>(this.url('public', 'surveys', slug, 'responses'), body);
+  }
+
+  createDiscountSession(slug = environment.surveySlug): Promise<DiscountSession> {
+    return this.post<DiscountSession>(this.url('public', 'surveys', slug, 'discount', 'session'), {});
+  }
+
+  checkDiscount(mobile: string, slug = environment.surveySlug): Promise<DiscountCheck> {
+    const params = new HttpParams().set('mobile', mobile);
+    return this.get<DiscountCheck>(this.url('public', 'surveys', slug, 'discount', 'check'), params);
+  }
+
+  issueDiscount(
+    body: IssueDiscountRequest,
+    slug = environment.surveySlug,
+  ): Promise<IssueDiscountResult> {
+    return this.post<IssueDiscountResult>(this.url('public', 'surveys', slug, 'discount', 'issue'), body);
+  }
+
+  searchDiscountCodes(surveyId: number, search: string): Promise<DiscountCodeRow[]> {
+    const params = new HttpParams().set('search', search.trim());
+    return this.getDiscountCodes(this.url('surveys', surveyId, 'discount', 'codes'), params);
+  }
+
+  /** Legacy Bubble Hope path — same auth, no survey id in URL. */
+  searchDiscountCodesBySlug(search: string, slug = environment.surveySlug): Promise<DiscountCodeRow[]> {
+    const params = new HttpParams().set('search', search.trim());
+    return this.getDiscountCodes(this.url(slug, 'discount', 'codes'), params);
+  }
+
+  updateDiscountCode(
+    surveyId: number,
+    codeId: number,
+    body: UpdateDiscountCodeRequest,
+  ): Promise<DiscountCodeRow> {
+    return this.patch<DiscountCodeRow>(
+      this.url('surveys', surveyId, 'discount', 'codes', codeId),
+      body,
+    );
+  }
+
+  updateDiscountCodeBySlug(
+    codeId: number,
+    body: UpdateDiscountCodeRequest,
+    slug = environment.surveySlug,
+  ): Promise<DiscountCodeRow> {
+    return this.patch<DiscountCodeRow>(this.url(slug, 'discount', 'codes', codeId), body);
   }
 
   getBranches(): Promise<Branch[]> {
@@ -114,8 +166,17 @@ export class SurveyApi {
     return this.request(firstValueFrom(this.http.put<T>(url, body)));
   }
 
+  private patch<T>(url: string, body: unknown): Promise<T> {
+    return this.request(firstValueFrom(this.http.patch<T>(url, body)));
+  }
+
   private delete(url: string): Promise<void> {
     return this.request(firstValueFrom(this.http.delete(url))).then(() => undefined);
+  }
+
+  private async getDiscountCodes(url: string, params: HttpParams): Promise<DiscountCodeRow[]> {
+    const result = await this.get<PagedResult<DiscountCodeRow> | DiscountCodeRow[]>(url, params);
+    return Array.isArray(result) ? result : result.items ?? [];
   }
 
   private async request<T>(promise: Promise<T>): Promise<T> {
