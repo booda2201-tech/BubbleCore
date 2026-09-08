@@ -37,7 +37,7 @@
         </button>
       </div>
       <p class="mt-2 text-xs leading-relaxed text-ink-400">
-        بعد ما العميل يستفيد بالخصم، علّمي الكود «مستخدم» عشان ميتكررش.
+بعد تطبيق الخصم للعميل، يتم تحديث حالة الكود إلى «مُستخدم» لضمان عدم تكرار استخدامه.
       </p>
     </div>
 
@@ -54,7 +54,7 @@
       </div>
     } @else if (searched() && !codes().length) {
       <div class="glass-panel mt-4 p-8 text-center">
-        <p class="text-sm text-ink-500">مفيش كود مطابق للبحث ده.</p>
+        <p class="text-sm text-ink-500">لم يتم العثور على كود مطابق لمعايير البحث.</p>
       </div>
     } @else {
       <div class="mt-4 space-y-3">
@@ -94,7 +94,7 @@
               }
               @if (code.usedAt) {
                 <div>
-                  <dt>اتستخدم</dt>
+                  <dt>تاريخ استخدامه </dt>
                   <dd class="ltr-nums">{{ code.usedAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
                 </div>
               }
@@ -112,9 +112,9 @@
                 }}
               </button>
             } @else if (meta.tone === 'used') {
-              <p class="code-note mt-4">الكود ده اتعلّم مستخدم قبل كده.</p>
+              <p class="code-note mt-4">تم استخدام هذا الكود مسبقًا.</p>
             } @else {
-              <p class="code-note mt-4">الكود ده مش متاح للاستخدام.</p>
+              <p class="code-note mt-4">هذا الكود غير متاح للاستخدام حاليًا.</p>
             }
           </article>
         }
