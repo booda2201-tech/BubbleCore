@@ -92,11 +92,24 @@
         </div>
       }
 
-      <button type="submit" class="btn-primary w-full text-base">
-        <span>ابدأ التقييم</span>
+      <button type="submit" class="btn-primary w-full text-base" [disabled]="startBusy()">
+        <span>{{ startBusy() ? 'جاري التحقق…' : 'ابدأ التقييم' }}</span>
         <span aria-hidden="true">←</span>
       </button>
     </form>
+
+    @if (startError()) {
+      <p class="field-error mt-3 text-center">{{ startError() }}</p>
+      @if (issuedDiscount()?.code) {
+        <button type="button" class="btn-ghost mt-3 w-full" (click)="openExistingCode()">
+          عرض كود الخصم الحالي
+        </button>
+      }
+    }
+
+    <p class="mt-5 text-center text-sm">
+      <a routerLink="/claim-discount" class="text-orange-600">قيّمت قبل كده؟ طالب بكود الخصم</a>
+    </p>
 
     <p class="mt-6 text-center text-[0.7rem] leading-relaxed text-ink-400">
       بياناتك محفوظة بسرية تامة ولن تُستخدم إلا لتحسين جودة الخدمة.

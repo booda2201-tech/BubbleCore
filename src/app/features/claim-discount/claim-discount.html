@@ -1,0 +1,64 @@
+<section class="relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+  <div class="orb h-72 w-72 bg-orange-500/35 -top-16 start-1/4 animate-float"></div>
+  <div class="orb h-80 w-80 bg-teal-400/35 bottom-0 end-1/5 animate-float [animation-delay:-3s]"></div>
+
+  <div class="glass-panel animate-rise relative z-10 w-full max-w-lg p-8 sm:p-10">
+    <p class="eyebrow">مطالبة بالكود</p>
+    <h1 class="mt-2 text-xl font-bold text-ink-900 sm:text-2xl">قيّمت قبل تفعيل الخصم؟</h1>
+    <p class="mt-2 text-sm leading-relaxed text-ink-500">
+      اكتب رقم الموبايل اللي استخدمته في التقييم. لو الكود موجود هنظهره لك مباشرة.
+    </p>
+
+    <form class="mt-7 space-y-4" (submit)="onSubmit($event)" novalidate>
+      <div>
+        <label class="field-label" for="claim-mobile">رقم الموبايل</label>
+        <input
+          id="claim-mobile"
+          type="tel"
+          inputmode="tel"
+          class="glass-input ltr-nums text-start"
+          [class.is-invalid]="claimForm.mobile().invalid() && claimForm.mobile().touched()"
+          [formField]="claimForm.mobile"
+          placeholder="01xxxxxxxxx"
+          autocomplete="tel"
+        />
+        @if (claimForm.mobile().invalid() && claimForm.mobile().touched()) {
+          <p class="field-error">من فضلك أدخل رقم موبايل صحيح</p>
+        }
+      </div>
+
+      @if (error()) {
+        <p class="field-error">{{ error() }}</p>
+      }
+
+      <button type="submit" class="btn-primary w-full" [disabled]="busy()">
+        {{ busy() ? 'جاري التحقق…' : 'استعلام عن الكود' }}
+      </button>
+    </form>
+
+    @if (issued()?.code) {
+      <div class="code-box mt-6 text-center">
+        <span class="code-label">
+          كود الخصم@if (issued()?.discountPercent; as percent) {
+            · {{ percent }}%
+          }
+        </span>
+        <p class="code-value ltr-nums">{{ issued()?.code }}</p>
+        @if (issued()?.expiresAt) {
+          <p class="ltr-nums mt-2 text-xs text-ink-400">
+            صالح حتى {{ issued()?.expiresAt | date: 'yyyy/MM/dd' }}
+          </p>
+        }
+        <p class="notice mt-3">هذا الكود يُستخدم مرة واحدة فقط</p>
+        <div class="mt-4 flex gap-2">
+          <button type="button" class="btn-primary flex-1" (click)="copyCode()">
+            {{ copied() ? 'تم النسخ' : 'نسخ الكود' }}
+          </button>
+          <button type="button" class="btn-ghost" (click)="openCodeScreen()">عرض أكبر</button>
+        </div>
+      </div>
+    }
+
+    <a routerLink="/" class="mt-6 block text-center text-sm text-orange-600">العودة للرئيسية</a>
+  </div>
+</section>

@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import {
   ChoiceBreakdown,
+  DiscountCodeRow,
+  DiscountCodeStatusValue,
   Kpi,
   QuestionDetails,
   ResponseAnswer,
@@ -13,6 +15,7 @@ import {
   SurveyResponseRow,
 } from '../../core/api-models';
 import { AdminAuth } from '../../core/admin-auth';
+import { discountCodeMobile, discountCodeStatus } from '../../core/discount-code-status';
 import { FeedbackStore } from '../../core/feedback-store';
 import { displayIcon, optionTone } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
@@ -20,6 +23,7 @@ import { AdminSurveyEditorComponent } from '../admin-survey-editor/admin-survey-
 import { StarRatingComponent } from '../../shared/star-rating/star-rating';
 
 type InsightTab = 'distribution' | 'averages' | 'choices';
+type DashboardView = 'dashboard' | 'editor' | 'discounts';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -34,6 +38,7 @@ export class AdminDashboardComponent {
   private readonly feedback = inject(FeedbackStore);
 
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
+  private discountSearchTimer: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -47,7 +52,18 @@ export class AdminDashboardComponent {
   protected readonly analytics = signal<SurveyAnalytics | null>(null);
   protected readonly rows = signal<SurveyResponseRow[]>([]);
   protected readonly filteredTotal = signal(0);
-  protected readonly view = signal<'dashboard' | 'editor'>('dashboard');
+  protected readonly page = signal(1);
+  protected readonly pageSize = 10;
+  protected readonly responsesLoading = signal(false);
+  protected readonly view = signal<DashboardView>('dashboard');
+  protected readonly discountSearch = signal('');
+  protected readonly discountRows = signal<DiscountCodeRow[]>([]);
+  protected readonly discountLoading = signal(false);
+  protected readonly discountExporting = signal(false);
+  protected readonly updatingCodeId = signal<number | null>(null);
+
+  protected readonly mobileOf = discountCodeMobile;
+  protected readonly statusOf = discountCodeStatus;
 
   protected readonly search = signal('');
   protected readonly starFilter = signal(0);
@@ -59,6 +75,18 @@ export class AdminDashboardComponent {
   protected readonly selectedBreakdownId = signal<number | null>(null);
 
   protected readonly total = computed(() => this.analytics()?.totalResponses ?? 0);
+  protected readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredTotal() / this.pageSize)),
+  );
+  protected readonly pageStart = computed(() => {
+    if (!this.filteredTotal()) return 0;
+    return (this.page() - 1) * this.pageSize + 1;
+  });
+  protected readonly pageEnd = computed(() =>
+    Math.min(this.page() * this.pageSize, this.filteredTotal()),
+  );
+  protected readonly canPrevPage = computed(() => this.page() > 1);
+  protected readonly canNextPage = computed(() => this.page() < this.totalPages());
   protected readonly averageRating = computed(() => this.analytics()?.averageRating ?? 0);
   protected readonly averageStars = computed(() => Math.round(this.averageRating()));
   protected readonly distribution = computed(() => this.analytics()?.ratingDistribution ?? []);
@@ -128,13 +156,33 @@ export class AdminDashboardComponent {
 
   protected onSearch(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
+    this.page.set(1);
     clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => void this.reloadResponses(), 300);
   }
 
   protected setStarFilter(stars: number): void {
     this.starFilter.set(stars);
+    this.page.set(1);
     void this.reloadResponses();
+  }
+
+  protected goToPage(page: number): void {
+    const next = Math.min(Math.max(1, page), this.totalPages());
+    if (next === this.page()) return;
+    this.page.set(next);
+    this.expandedId.set(null);
+    void this.reloadResponses().then(() => {
+      document.getElementById('responses-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  protected prevPage(): void {
+    this.goToPage(this.page() - 1);
+  }
+
+  protected nextPage(): void {
+    this.goToPage(this.page() + 1);
   }
 
   protected answer(row: SurveyResponseRow, questionId: number): ResponseAnswer | undefined {
@@ -207,6 +255,103 @@ export class AdminDashboardComponent {
 
   protected closeEditor(): void {
     this.view.set('dashboard');
+  }
+
+  protected openDiscounts(): void {
+    this.view.set('discounts');
+    void this.loadDiscountCodes();
+  }
+
+  protected closeDiscounts(): void {
+    this.view.set('dashboard');
+  }
+
+  protected onDiscountSearch(event: Event): void {
+    this.discountSearch.set((event.target as HTMLInputElement).value);
+    clearTimeout(this.discountSearchTimer);
+    this.discountSearchTimer = setTimeout(() => void this.loadDiscountCodes(), 300);
+  }
+
+  protected async setDiscountStatus(row: DiscountCodeRow, rawStatus: number): Promise<void> {
+    const surveyId = this.surveyId();
+    const status = rawStatus as DiscountCodeStatusValue;
+    if (!surveyId || this.updatingCodeId() || ![1, 2, 3, 4].includes(status)) return;
+    this.updatingCodeId.set(row.id);
+    try {
+      const updated = await this.api.updateDiscountCode(surveyId, row.id, { status });
+      this.discountRows.update((rows) =>
+        rows.map((entry) => (entry.id === row.id ? updated : entry)),
+      );
+    } catch (error) {
+      this.error.set(errorMessage(error));
+    } finally {
+      this.updatingCodeId.set(null);
+    }
+  }
+
+  protected statusSelectValue(status: DiscountCodeRow['status']): DiscountCodeStatusValue {
+    const meta = this.statusOf(status).tone;
+    if (meta === 'used') return 2;
+    if (meta === 'expired') return 3;
+    if (meta === 'revoked') return 4;
+    return 1;
+  }
+
+  protected discountTone(status: DiscountCodeRow['status']): string {
+    const tone = this.statusOf(status).tone;
+    if (tone === 'used' || tone === 'revoked' || tone === 'unknown') return 'neutral';
+    if (tone === 'expired') return 'negative';
+    return 'positive';
+  }
+
+  protected async exportDiscountExcel(): Promise<void> {
+    if (this.discountExporting()) return;
+    this.discountExporting.set(true);
+    try {
+      const rows = this.discountRows();
+      const header = ['mobile', 'name', 'code', 'percent', 'status', 'issuedAt', 'expiresAt'];
+      const lines = [
+        header.join(','),
+        ...rows.map((row) =>
+          [
+            csvCell(this.mobileOf(row)),
+            csvCell(row.customerName ?? ''),
+            csvCell(row.code),
+            csvCell(row.discountPercent ?? ''),
+            csvCell(this.statusOf(row.status).label),
+            csvCell(row.issuedAt ?? ''),
+            csvCell(row.expiresAt ?? ''),
+          ].join(','),
+        ),
+      ];
+      const blob = new Blob(['\uFEFF' + lines.join('\n')], {
+        type: 'text/csv;charset=utf-8;',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'bubble-hope-discount-codes.csv';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      this.error.set(errorMessage(error));
+    } finally {
+      this.discountExporting.set(false);
+    }
+  }
+
+  private async loadDiscountCodes(): Promise<void> {
+    const surveyId = this.surveyId();
+    if (!surveyId) return;
+    this.discountLoading.set(true);
+    try {
+      this.discountRows.set(await this.api.searchDiscountCodes(surveyId, this.discountSearch()));
+    } catch (error) {
+      this.discountRows.set([]);
+      this.error.set(errorMessage(error));
+    } finally {
+      this.discountLoading.set(false);
+    }
   }
 
   protected async onEditorSaved(details: SurveyDetails): Promise<void> {
@@ -330,14 +475,35 @@ export class AdminDashboardComponent {
 
   private async loadResponses(id = this.surveyId()): Promise<void> {
     if (!id) return;
-    const result = await this.api.getResponses(id, {
-      search: this.search(),
-      stars: this.starFilter() || undefined,
-      page: 1,
-      pageSize: 100,
-    });
-    this.rows.set(result.items);
-    this.filteredTotal.set(result.total);
+    this.responsesLoading.set(true);
+    try {
+      let page = this.page();
+      const result = await this.api.getResponses(id, {
+        search: this.search(),
+        stars: this.starFilter() || undefined,
+        page,
+        pageSize: this.pageSize,
+      });
+
+      const maxPage = Math.max(1, Math.ceil(result.total / this.pageSize));
+      if (page > maxPage && result.total > 0) {
+        this.page.set(maxPage);
+        const corrected = await this.api.getResponses(id, {
+          search: this.search(),
+          stars: this.starFilter() || undefined,
+          page: maxPage,
+          pageSize: this.pageSize,
+        });
+        this.rows.set(corrected.items);
+        this.filteredTotal.set(corrected.total);
+        return;
+      }
+
+      this.rows.set(result.items);
+      this.filteredTotal.set(result.total);
+    } finally {
+      this.responsesLoading.set(false);
+    }
   }
 }
 
@@ -351,6 +517,12 @@ function errorMessage(error: unknown): string {
 function shortenLabel(value: string, max = 24): string {
   const text = value.trim();
   return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function csvCell(value: string | number | null | undefined): string {
+  const text = String(value ?? '');
+  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
 }
 
 function toSaveSurveyWithNotes(details: SurveyDetails): SaveSurvey {

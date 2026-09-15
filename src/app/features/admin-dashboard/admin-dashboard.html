@@ -26,19 +26,38 @@
         <button
           type="button"
           class="btn-ghost"
-          (click)="view() === 'editor' ? closeEditor() : openEditor()"
+          (click)="view() === 'discounts' ? closeDiscounts() : openDiscounts()"
           [disabled]="!details()"
+        >
+          {{ view() === 'discounts' ? 'لوحة التقييمات' : 'أكواد الخصم' }}
+        </button>
+        <button
+          type="button"
+          class="btn-ghost"
+          (click)="view() === 'editor' ? closeEditor() : openEditor()"
+          [disabled]="!details() || view() === 'discounts'"
         >
           {{ view() === 'editor' ? 'لوحة التقييمات' : 'تعديل الأسئلة' }}
         </button>
         <button
           type="button"
           class="btn-primary"
-          (click)="exportExcel()"
-          [disabled]="!total() || exporting() || view() === 'editor'"
+          (click)="view() === 'discounts' ? exportDiscountExcel() : exportExcel()"
+          [disabled]="
+            view() === 'editor' ||
+            (view() === 'discounts' ? discountExporting() : !total() || exporting())
+          "
         >
           <span aria-hidden="true">⇩</span>
-          <span>{{ exporting() ? 'جاري التصدير…' : 'تصدير' }}</span>
+          <span>{{
+            view() === 'discounts'
+              ? discountExporting()
+                ? 'جاري التصدير…'
+                : 'تصدير الأكواد'
+              : exporting()
+                ? 'جاري التصدير…'
+                : 'تصدير'
+          }}</span>
         </button>
         <button type="button" class="btn-ghost" (click)="logout()">خروج</button>
       </div>
@@ -56,6 +75,72 @@
           (saved)="onEditorSaved($event)"
           (cancelled)="closeEditor()"
         />
+      </div>
+    } @else if (view() === 'discounts') {
+      <div class="glass-panel mt-4 p-4 sm:p-5">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="text-base font-bold text-ink-900">أكواد الخصم</h2>
+          <input
+            type="search"
+            class="glass-input w-full !py-2 text-sm sm:!w-64"
+            [value]="discountSearch()"
+            (input)="onDiscountSearch($event)"
+            placeholder="ابحث بالاسم أو الرقم…"
+            aria-label="بحث في أكواد الخصم"
+          />
+        </div>
+
+        @if (discountLoading()) {
+          <p class="py-10 text-center text-sm text-ink-400">جاري تحميل الأكواد…</p>
+        } @else {
+          <div class="mt-4 overflow-x-auto">
+            <table class="data-table w-full min-w-[40rem] text-sm">
+              <thead>
+                <tr>
+                  <th>الموبايل</th>
+                  <th>الاسم</th>
+                  <th>الكود</th>
+                  <th>تاريخ الإصدار</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of discountRows(); track row.id) {
+                  <tr>
+                    <td class="ltr-nums">{{ mobileOf(row) }}</td>
+                    <td>{{ row.customerName || '—' }}</td>
+                    <td class="ltr-nums font-bold">{{ row.code }}</td>
+                    <td class="ltr-nums whitespace-nowrap">
+                      {{ (row.issuedAt || row.expiresAt) | date: 'yyyy/MM/dd HH:mm' }}
+                    </td>
+                    <td>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="chip" [class]="'chip-' + discountTone(row.status)">
+                          {{ statusOf(row.status).label }}
+                        </span>
+                        <select
+                          class="status-select"
+                          [disabled]="updatingCodeId() === row.id"
+                          [value]="statusSelectValue(row.status)"
+                          (change)="setDiscountStatus(row, +$any($event.target).value)"
+                        >
+                          <option [value]="1">فعّال</option>
+                          <option [value]="2">مستخدم</option>
+                          <option [value]="3">منتهي</option>
+                          <option [value]="4">ملغي</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="py-10 text-center text-ink-400">لا توجد أكواد بعد.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       </div>
     } @else if (error() && !analytics()) {
       <div class="glass-panel mt-4 p-10 text-center">
@@ -200,11 +285,17 @@
       </div>
 
       <!-- Compact responses list -->
-      <div class="glass-panel mt-4 p-4 sm:p-5">
+      <div id="responses-panel" class="glass-panel mt-4 p-4 sm:p-5">
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between gap-3">
             <h2 class="text-base font-bold text-ink-900">تقييمات العملاء</h2>
-            <span class="ltr-nums text-xs text-ink-400">{{ filteredTotal() }} نتيجة</span>
+            <span class="ltr-nums text-xs text-ink-400">
+              @if (filteredTotal()) {
+                {{ pageStart() }}–{{ pageEnd() }} من {{ filteredTotal() }}
+              } @else {
+                0 نتيجة
+              }
+            </span>
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -231,7 +322,7 @@
           </div>
         </div>
 
-        <div class="response-list mt-4">
+        <div class="response-list mt-4" [class.is-loading]="responsesLoading()">
           @for (row of rows(); track row.id) {
             <article class="response-card" [class.is-open]="isExpanded(row.id)">
               <div class="response-summary">
@@ -324,10 +415,36 @@
             </article>
           } @empty {
             <div class="py-12 text-center">
-              <p class="text-ink-400">لا توجد تقييمات مطابقة.</p>
+              <p class="text-ink-400">
+                {{ responsesLoading() ? 'جاري تحميل التقييمات…' : 'لا توجد تقييمات مطابقة.' }}
+              </p>
             </div>
           }
         </div>
+
+        @if (filteredTotal() > pageSize) {
+          <nav class="pager mt-4" aria-label="صفحات التقييمات">
+            <button
+              type="button"
+              class="pager-btn"
+              [disabled]="!canPrevPage() || responsesLoading()"
+              (click)="prevPage()"
+            >
+              السابق
+            </button>
+            <span class="ltr-nums pager-meta">
+              صفحة {{ page() }} من {{ totalPages() }}
+            </span>
+            <button
+              type="button"
+              class="pager-btn"
+              [disabled]="!canNextPage() || responsesLoading()"
+              (click)="nextPage()"
+            >
+              التالي
+            </button>
+          </nav>
+        }
       </div>
     }
 

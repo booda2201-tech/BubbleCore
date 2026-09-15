@@ -301,7 +301,14 @@ export class FeedbackComponent {
 
   protected finish(): void {
     this.store.customer.set(null);
+    this.store.discount.set(null);
     this.router.navigate(['/']);
+  }
+
+  protected showDiscount(): void {
+    if (!this.issuedCode()) return;
+    this.store.discount.set(this.discountIssue());
+    this.router.navigate(['/discount-code']);
   }
 
   protected retry(): void {
@@ -362,8 +369,10 @@ export class FeedbackComponent {
         ...(clientUuid ? { clientUuid } : {}),
       });
       this.discountIssue.set(issued);
+      this.store.discount.set(issued);
     } catch (error) {
       this.discountIssue.set(null);
+      this.store.discount.set(null);
       this.discountError.set(errorMessage(error));
     } finally {
       this.issuing.set(false);

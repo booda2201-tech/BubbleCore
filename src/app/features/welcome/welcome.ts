@@ -1,8 +1,8 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AdminAuth } from '../../core/admin-auth';
-import { DiscountCheck } from '../../core/api-models';
+import { DiscountCheck, IssueDiscountResult } from '../../core/api-models';
 import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
 import { ChoiceOption } from '../../core/models';
@@ -16,7 +16,7 @@ const TAP_WINDOW_MS = 900;
 
 @Component({
   selector: 'app-welcome',
-  imports: [ReactiveFormsModule, ModernSelectComponent],
+  imports: [ReactiveFormsModule, ModernSelectComponent, RouterLink],
   templateUrl: './welcome.html',
   styleUrl: './welcome.scss',
   host: {
@@ -44,6 +44,10 @@ export class WelcomeComponent {
   protected readonly selectedBranch = signal<string | null>(null);
   protected readonly branchTouched = signal(false);
 
+  protected readonly startBusy = signal(false);
+  protected readonly startError = signal('');
+  protected readonly issuedDiscount = this.store.discount;
+
   protected readonly adminGateOpen = signal(false);
   protected readonly adminEmailOrPhone = signal('');
   protected readonly adminPassword = signal('');
@@ -65,7 +69,7 @@ export class WelcomeComponent {
     void this.discount.ensureSession();
   }
 
-  protected start(): void {
+  protected async start(): Promise<void> {
     this.branchTouched.set(true);
 
     if (this.form.invalid) {
@@ -77,12 +81,41 @@ export class WelcomeComponent {
 
     const { name, phone } = this.form.getRawValue();
     const branchId = this.selectedBranch() ? Number(this.selectedBranch()) : null;
+
+    this.startBusy.set(true);
+    this.startError.set('');
+    this.store.discount.set(null);
+
+    try {
+      if (this.discountEnabled()) {
+        const existing = await this.api.checkDiscount(phone.trim());
+        this.discountCheck.set(existing);
+
+        if (existing.hasCode && existing.code) {
+          this.store.discount.set(toIssued(existing));
+          this.startError.set('التقييم والكود مرتبطين بالرقم ده بالفعل.');
+          return;
+        }
+      }
+    } catch {
+      // If the discount API is unavailable, still allow the evaluation.
+    } finally {
+      this.startBusy.set(false);
+    }
+
+    if (this.startError()) return;
+
     this.store.customer.set({
       name: name.trim(),
       phone: phone.trim(),
       branchId: Number.isFinite(branchId) ? branchId : null,
     });
     this.router.navigate(['/feedback']);
+  }
+
+  protected openExistingCode(): void {
+    if (!this.store.discount()?.code) return;
+    this.router.navigate(['/discount-code']);
   }
 
   /** Hidden entry point: three quick taps on the logo open the admin gate. */
@@ -238,10 +271,22 @@ export class WelcomeComponent {
   }
 }
 
+function toIssued(check: DiscountCheck): IssueDiscountResult {
+  return {
+    hasActiveCode: check.hasCode,
+    code: check.code,
+    discountPercent: check.discountPercent,
+    expiresAt: check.expiresAt,
+    status: check.status,
+    alreadyIssued: check.hasCode,
+    message: check.message,
+  };
+}
+
 function discountHintMessage(check: DiscountCheck | null): string {
   if (!check) return '';
   if (check.hasCode) {
-    return 'الرقم ده عنده كود خصم فعال. هيتظهر بعد ما تخلّص التقييم.';
+    return 'الرقم ده عنده كود خصم فعّال. اطلبه من شاشة المطالبة أو من الزر اللي تحت.';
   }
   if (check.usedBefore) {
     return 'الرقم ده استخدم كود الخصم قبل كده. تقدر تقيّم عادي.';

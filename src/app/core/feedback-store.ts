@@ -1,5 +1,5 @@
 import { Service, signal } from '@angular/core';
-import { PublicSurvey } from './api-models';
+import { IssueDiscountResult, PublicSurvey } from './api-models';
 import { Customer } from './models';
 
 @Service()
@@ -9,4 +9,7 @@ export class FeedbackStore {
 
   /** Public survey from GET /public/surveys/{slug}, including its branches. */
   readonly survey = signal<PublicSurvey | null>(null);
+
+  /** Discount issued or recovered for the current customer session. */
+  readonly discount = signal<IssueDiscountResult | null>(null);
 }
