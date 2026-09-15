@@ -6,6 +6,16 @@
   text-align: start;
 }
 
+.ms-compact {
+  max-width: none;
+  margin-inline: 0;
+  z-index: 1;
+}
+
+.ms-compact.ms-open {
+  z-index: 40;
+}
+
 .ms-trigger {
   display: flex;
   align-items: center;
@@ -24,7 +34,7 @@
     background 0.25s ease,
     box-shadow 0.25s ease;
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: rgb(242 107 9 / 0.4);
     background: #fef5ed;
   }
@@ -34,6 +44,96 @@
     border-color: rgb(242 107 9 / 0.7);
     box-shadow: 0 0 0 4px rgb(242 107 9 / 0.12);
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.ms-compact .ms-trigger {
+  gap: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0.28rem 0.7rem 0.28rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ms-compact .ms-label {
+  font-weight: 700;
+  color: inherit;
+}
+
+.ms-compact .ms-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 0.55rem;
+  height: 0.55rem;
+  font-size: 0;
+  border-radius: 999px;
+  background: currentColor;
+  color: #f26b09;
+}
+
+.ms-compact.ms-tone-positive .ms-trigger {
+  background: rgb(43 182 175 / 0.12);
+  border-color: rgb(43 182 175 / 0.35);
+  color: #147a78;
+  box-shadow: none;
+}
+
+.ms-compact.ms-tone-positive .ms-icon {
+  color: #2bb6af;
+}
+
+.ms-compact.ms-tone-positive .ms-chevron {
+  color: rgb(20 122 120 / 0.65);
+}
+
+.ms-compact.ms-tone-neutral .ms-trigger {
+  background: rgb(242 107 9 / 0.12);
+  border-color: rgb(242 107 9 / 0.3);
+  color: #b14000;
+  box-shadow: none;
+}
+
+.ms-compact.ms-tone-neutral .ms-icon {
+  color: #f26b09;
+}
+
+.ms-compact.ms-tone-neutral .ms-chevron {
+  color: rgb(177 64 0 / 0.65);
+}
+
+.ms-compact.ms-tone-negative .ms-trigger {
+  background: rgb(196 70 70 / 0.1);
+  border-color: rgb(196 70 70 / 0.28);
+  color: #a33a3a;
+  box-shadow: none;
+}
+
+.ms-compact.ms-tone-negative .ms-icon {
+  color: #c44646;
+}
+
+.ms-compact.ms-tone-negative .ms-chevron {
+  color: rgb(163 58 58 / 0.65);
+}
+
+.ms-compact.ms-open .ms-trigger,
+.ms-compact .ms-trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgb(242 107 9 / 0.12);
+}
+
+.ms-compact.ms-tone-positive.ms-open .ms-trigger,
+.ms-compact.ms-tone-positive .ms-trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgb(43 182 175 / 0.18);
+}
+
+.ms-compact.ms-tone-negative.ms-open .ms-trigger,
+.ms-compact.ms-tone-negative .ms-trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgb(196 70 70 / 0.16);
 }
 
 .ms-open .ms-trigger {
@@ -73,32 +173,70 @@
   }
 }
 
+.ms-compact .ms-chevron {
+  width: 1rem;
+  height: 1rem;
+}
+
 .ms-open .ms-chevron {
   transform: rotate(180deg);
   color: #f26b09;
+}
+
+.ms-drop-up.ms-open .ms-chevron {
+  transform: none;
 }
 
 .ms-menu {
   position: absolute;
   inset-inline: 0;
   top: calc(100% + 0.45rem);
-  z-index: 40;
+  z-index: 50;
   margin: 0;
   padding: 0.4rem;
   list-style: none;
   border-radius: 1.15rem;
   border: 1px solid rgb(242 107 9 / 0.12);
-  background: rgb(255 252 245 / 0.96);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  background: rgb(255 252 245 / 0.98);
   box-shadow: 0 22px 50px -18px rgb(26 36 51 / 0.22);
   animation: ms-rise 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ms-compact .ms-menu {
+  /* Physical left so the menu opens inward over the table in RTL admin. */
+  inset-inline: auto;
+  left: 0;
+  right: auto;
+  width: max-content;
+  min-width: 10.5rem;
+  padding: 0.35rem;
+  border-radius: 0.95rem;
+}
+
+.ms-drop-up .ms-menu {
+  top: auto;
+  bottom: calc(100% + 0.45rem);
 }
 
 @keyframes ms-rise {
   from {
     opacity: 0;
     transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ms-drop-up .ms-menu {
+  animation-name: ms-rise-up;
+}
+
+@keyframes ms-rise-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -130,6 +268,13 @@
   }
 }
 
+.ms-compact .ms-option {
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.7rem;
+  font-size: 0.8rem;
+}
+
 .ms-option-active {
   background: linear-gradient(135deg, rgb(242 107 9 / 0.12), rgb(61 200 207 / 0.1));
   color: #b14000;
@@ -140,6 +285,17 @@
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   color: #f26b09;
+}
+
+.ms-compact .ms-option-icon {
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  font-size: 0;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .ms-option-label {

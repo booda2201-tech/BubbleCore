@@ -1,14 +1,26 @@
-<div class="ms" [class.ms-open]="open()">
+<div
+  class="ms"
+  [class.ms-open]="open()"
+  [class.ms-compact]="size() === 'compact'"
+  [class.ms-disabled]="disabled()"
+  [class.ms-drop-up]="dropUp()"
+  [class.ms-tone-positive]="selected()?.tone === 'positive'"
+  [class.ms-tone-neutral]="selected()?.tone === 'neutral'"
+  [class.ms-tone-negative]="selected()?.tone === 'negative'"
+>
   <button
     type="button"
     class="ms-trigger"
+    [disabled]="disabled()"
     [attr.aria-expanded]="open()"
     [attr.aria-label]="ariaLabel()"
     (click)="toggle()"
     (keydown)="onKeydown($event)"
   >
     @if (selected(); as item) {
-      <span class="ms-icon" aria-hidden="true">{{ item.icon }}</span>
+      @if (item.icon) {
+        <span class="ms-icon" aria-hidden="true">{{ item.icon }}</span>
+      }
       <span class="ms-label">{{ item.label }}</span>
     } @else {
       <span class="ms-placeholder">{{ placeholder() }}</span>
@@ -37,7 +49,9 @@
             [class.tone-negative]="option.tone === 'negative'"
             (click)="choose(option.id)"
           >
-            <span class="ms-option-icon" aria-hidden="true">{{ option.icon }}</span>
+            @if (option.icon) {
+              <span class="ms-option-icon" aria-hidden="true">{{ option.icon }}</span>
+            }
             <span class="ms-option-label">{{ option.label }}</span>
             @if (value() === option.id) {
               <span class="ms-check" aria-hidden="true">✓</span>

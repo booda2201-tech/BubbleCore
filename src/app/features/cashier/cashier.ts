@@ -53,7 +53,12 @@ export class CashierComponent {
     this.searched.set(true);
 
     try {
-      this.codes.set(await this.api.searchDiscountCodes(surveyId, search));
+      const result = await this.api.searchDiscountCodes(surveyId, {
+        search,
+        page: 1,
+        pageSize: 50,
+      });
+      this.codes.set(result.items);
     } catch (error) {
       this.codes.set([]);
       this.error.set(errorMessage(error));

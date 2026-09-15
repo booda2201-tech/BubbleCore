@@ -78,15 +78,36 @@ export class SurveyApi {
     return this.post<IssueDiscountResult>(this.url('public', 'surveys', slug, 'discount', 'issue'), body);
   }
 
-  searchDiscountCodes(surveyId: number, search: string): Promise<DiscountCodeRow[]> {
-    const params = new HttpParams().set('search', search.trim());
-    return this.getDiscountCodes(this.url('surveys', surveyId, 'discount', 'codes'), params);
+  searchDiscountCodes(
+    surveyId: number,
+    query: { search?: string; page?: number; pageSize?: number } = {},
+  ): Promise<PagedResult<DiscountCodeRow>> {
+    let params = new HttpParams()
+      .set('page', String(query.page ?? 1))
+      .set('pageSize', String(query.pageSize ?? 10));
+    const search = query.search?.trim();
+    if (search) params = params.set('search', search);
+    return this.getDiscountCodes(this.url('surveys', surveyId, 'discount', 'codes'), params, {
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 10,
+    });
   }
 
   /** Legacy Bubble Hope path — same auth, no survey id in URL. */
-  searchDiscountCodesBySlug(search: string, slug = environment.surveySlug): Promise<DiscountCodeRow[]> {
-    const params = new HttpParams().set('search', search.trim());
-    return this.getDiscountCodes(this.url(slug, 'discount', 'codes'), params);
+  searchDiscountCodesBySlug(
+    search: string,
+    slug = environment.surveySlug,
+    query: { page?: number; pageSize?: number } = {},
+  ): Promise<PagedResult<DiscountCodeRow>> {
+    let params = new HttpParams()
+      .set('page', String(query.page ?? 1))
+      .set('pageSize', String(query.pageSize ?? 10));
+    const value = search.trim();
+    if (value) params = params.set('search', value);
+    return this.getDiscountCodes(this.url(slug, 'discount', 'codes'), params, {
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 10,
+    });
   }
 
   updateDiscountCode(
@@ -174,9 +195,30 @@ export class SurveyApi {
     return this.request(firstValueFrom(this.http.delete(url))).then(() => undefined);
   }
 
-  private async getDiscountCodes(url: string, params: HttpParams): Promise<DiscountCodeRow[]> {
+  private async getDiscountCodes(
+    url: string,
+    params: HttpParams,
+    paging: { page: number; pageSize: number },
+  ): Promise<PagedResult<DiscountCodeRow>> {
     const result = await this.get<PagedResult<DiscountCodeRow> | DiscountCodeRow[]>(url, params);
-    return Array.isArray(result) ? result : result.items ?? [];
+
+    if (Array.isArray(result)) {
+      const total = result.length;
+      const start = (paging.page - 1) * paging.pageSize;
+      return {
+        total,
+        page: paging.page,
+        pageSize: paging.pageSize,
+        items: result.slice(start, start + paging.pageSize),
+      };
+    }
+
+    return {
+      total: result.total ?? result.items?.length ?? 0,
+      page: result.page ?? paging.page,
+      pageSize: result.pageSize ?? paging.pageSize,
+      items: result.items ?? [],
+    };
   }
 
   private async request<T>(promise: Promise<T>): Promise<T> {

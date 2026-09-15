@@ -22,10 +22,16 @@ export class ModernSelectComponent {
   readonly options = input.required<readonly ChoiceOption[]>();
   readonly placeholder = input('اختر إجابة');
   readonly ariaLabel = input('اختيار');
+  /** Compact trigger for dense tables / toolbars. */
+  readonly size = input<'default' | 'compact'>('default');
+  /** When false, re-selecting the active option keeps it instead of clearing. */
+  readonly clearable = input(true);
+  readonly disabled = input(false);
   /** Bound selection id (or null when empty). */
   readonly value = model<string | null>(null);
 
   protected readonly open = signal(false);
+  protected readonly dropUp = signal(false);
 
   protected readonly selected = computed(() => {
     const id = this.value();
@@ -33,17 +39,29 @@ export class ModernSelectComponent {
   });
 
   protected toggle(): void {
-    this.open.update((value) => !value);
+    if (this.disabled()) return;
+    if (this.open()) {
+      this.closeMenu();
+      return;
+    }
+    this.open.set(true);
+    requestAnimationFrame(() => this.syncDropDirection());
   }
 
   protected choose(id: string): void {
-    this.value.set(this.value() === id ? null : id);
-    this.open.set(false);
+    if (this.disabled()) return;
+    if (this.clearable() && this.value() === id) {
+      this.value.set(null);
+    } else {
+      this.value.set(id);
+    }
+    this.closeMenu();
   }
 
   protected onKeydown(event: KeyboardEvent): void {
+    if (this.disabled()) return;
     if (event.key === 'Escape') {
-      this.open.set(false);
+      this.closeMenu();
       return;
     }
     if (event.key === 'Enter' || event.key === ' ') {
@@ -55,7 +73,30 @@ export class ModernSelectComponent {
   @HostListener('document:click', ['$event'])
   protected onDocumentClick(event: MouseEvent): void {
     if (!this.host.nativeElement.contains(event.target as Node)) {
-      this.open.set(false);
+      this.closeMenu();
     }
+  }
+
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
+  protected onViewportChange(): void {
+    if (this.open()) this.syncDropDirection();
+  }
+
+  private closeMenu(): void {
+    this.open.set(false);
+    this.dropUp.set(false);
+  }
+
+  private syncDropDirection(): void {
+    const trigger = this.host.nativeElement.querySelector('.ms-trigger') as HTMLElement | null;
+    const menu = this.host.nativeElement.querySelector('.ms-menu') as HTMLElement | null;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const menuHeight = menu?.offsetHeight || this.options().length * 42 + 24;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    this.dropUp.set(spaceBelow < menuHeight && spaceAbove > spaceBelow);
   }
 }

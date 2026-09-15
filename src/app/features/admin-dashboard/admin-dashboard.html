@@ -1,4 +1,4 @@
-<section class="relative min-h-dvh overflow-hidden px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
+<section class="relative min-h-dvh overflow-x-hidden px-3 py-5 sm:px-6 sm:py-8 lg:px-8">
   <div class="orb h-96 w-96 bg-orange-500/25 -top-32 start-1/3 animate-float"></div>
   <div
     class="orb h-80 w-80 bg-teal-400/25 bottom-0 end-0 animate-float [animation-delay:-5s]"
@@ -77,12 +77,15 @@
         />
       </div>
     } @else if (view() === 'discounts') {
-      <div class="glass-panel mt-4 p-4 sm:p-5">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 class="text-base font-bold text-ink-900">أكواد الخصم</h2>
+      <div class="glass-panel discounts-panel mt-4 p-4 sm:p-5">
+        <div class="discounts-toolbar">
+          <div>
+            <p class="eyebrow">إدارة الأكواد</p>
+            <h2 class="text-base font-bold text-ink-900">أكواد الخصم</h2>
+          </div>
           <input
             type="search"
-            class="glass-input w-full !py-2 text-sm sm:!w-64"
+            class="glass-input discounts-search"
             [value]="discountSearch()"
             (input)="onDiscountSearch($event)"
             placeholder="ابحث بالاسم أو الرقم…"
@@ -93,8 +96,47 @@
         @if (discountLoading()) {
           <p class="py-10 text-center text-sm text-ink-400">جاري تحميل الأكواد…</p>
         } @else {
-          <div class="mt-4 overflow-x-auto">
-            <table class="data-table w-full min-w-[40rem] text-sm">
+          <div class="discounts-cards">
+            @for (row of discountRows(); track row.id) {
+              <article class="discount-card" [class.is-updating]="updatingCodeId() === row.id">
+                <div class="discount-card-head">
+                  <div class="min-w-0">
+                    <span class="code-badge ltr-nums">{{ row.code }}</span>
+                    <p class="discount-card-name">{{ row.customerName || '—' }}</p>
+                  </div>
+                  <div class="discount-card-status">
+                    <app-modern-select
+                      size="compact"
+                      [clearable]="false"
+                      [disabled]="updatingCodeId() === row.id"
+                      [options]="discountStatusOptions"
+                      [value]="statusSelectId(row.status)"
+                      (valueChange)="onDiscountStatusChange(row, $event)"
+                      ariaLabel="حالة كود الخصم"
+                      placeholder="الحالة"
+                    />
+                  </div>
+                </div>
+                <div class="discount-card-meta">
+                  <div>
+                    <span class="meta-label">الموبايل</span>
+                    <span class="meta-value ltr-nums">{{ mobileOf(row) }}</span>
+                  </div>
+                  <div>
+                    <span class="meta-label">تاريخ الإصدار</span>
+                    <span class="meta-value ltr-nums">
+                      {{ (row.issuedAt || row.expiresAt) | date: 'yyyy/MM/dd HH:mm' }}
+                    </span>
+                  </div>
+                </div>
+              </article>
+            } @empty {
+              <p class="py-10 text-center text-sm text-ink-400">لا توجد أكواد بعد.</p>
+            }
+          </div>
+
+          <div class="discounts-table-wrap">
+            <table class="data-table discounts-table w-full text-sm">
               <thead>
                 <tr>
                   <th>الموبايل</th>
@@ -106,30 +148,28 @@
               </thead>
               <tbody>
                 @for (row of discountRows(); track row.id) {
-                  <tr>
-                    <td class="ltr-nums">{{ mobileOf(row) }}</td>
-                    <td>{{ row.customerName || '—' }}</td>
-                    <td class="ltr-nums font-bold">{{ row.code }}</td>
-                    <td class="ltr-nums whitespace-nowrap">
+                  <tr [class.is-updating]="updatingCodeId() === row.id">
+                    <td class="ltr-nums mobile-cell">{{ mobileOf(row) }}</td>
+                    <td class="name-cell">
+                      <span class="name-emphasis">{{ row.customerName || '—' }}</span>
+                    </td>
+                    <td class="code-cell">
+                      <span class="code-badge ltr-nums">{{ row.code }}</span>
+                    </td>
+                    <td class="ltr-nums date-cell">
                       {{ (row.issuedAt || row.expiresAt) | date: 'yyyy/MM/dd HH:mm' }}
                     </td>
-                    <td>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <span class="chip" [class]="'chip-' + discountTone(row.status)">
-                          {{ statusOf(row.status).label }}
-                        </span>
-                        <select
-                          class="status-select"
-                          [disabled]="updatingCodeId() === row.id"
-                          [value]="statusSelectValue(row.status)"
-                          (change)="setDiscountStatus(row, +$any($event.target).value)"
-                        >
-                          <option [value]="1">فعّال</option>
-                          <option [value]="2">مستخدم</option>
-                          <option [value]="3">منتهي</option>
-                          <option [value]="4">ملغي</option>
-                        </select>
-                      </div>
+                    <td class="status-cell">
+                      <app-modern-select
+                        size="compact"
+                        [clearable]="false"
+                        [disabled]="updatingCodeId() === row.id"
+                        [options]="discountStatusOptions"
+                        [value]="statusSelectId(row.status)"
+                        (valueChange)="onDiscountStatusChange(row, $event)"
+                        ariaLabel="حالة كود الخصم"
+                        placeholder="الحالة"
+                      />
                     </td>
                   </tr>
                 } @empty {
@@ -140,6 +180,31 @@
               </tbody>
             </table>
           </div>
+
+          @if (discountTotal() > discountPageSize) {
+            <nav class="pager mt-4" aria-label="صفحات أكواد الخصم">
+              <button
+                type="button"
+                class="pager-btn"
+                [disabled]="!canPrevDiscountPage() || discountLoading()"
+                (click)="prevDiscountPage()"
+              >
+                السابق
+              </button>
+              <span class="ltr-nums pager-meta">
+                صفحة {{ discountPage() }} من {{ discountTotalPages() }}
+                · {{ discountTotal() | number }} كود
+              </span>
+              <button
+                type="button"
+                class="pager-btn"
+                [disabled]="!canNextDiscountPage() || discountLoading()"
+                (click)="nextDiscountPage()"
+              >
+                التالي
+              </button>
+            </nav>
+          }
         }
       </div>
     } @else if (error() && !analytics()) {

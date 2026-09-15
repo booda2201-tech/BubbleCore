@@ -17,17 +17,31 @@ import {
 import { AdminAuth } from '../../core/admin-auth';
 import { discountCodeMobile, discountCodeStatus } from '../../core/discount-code-status';
 import { FeedbackStore } from '../../core/feedback-store';
-import { displayIcon, optionTone } from '../../core/models';
+import { ChoiceOption, displayIcon, optionTone } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
 import { AdminSurveyEditorComponent } from '../admin-survey-editor/admin-survey-editor';
+import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 import { StarRatingComponent } from '../../shared/star-rating/star-rating';
 
 type InsightTab = 'distribution' | 'averages' | 'choices';
 type DashboardView = 'dashboard' | 'editor' | 'discounts';
 
+const DISCOUNT_STATUS_OPTIONS: readonly ChoiceOption[] = [
+  { id: '1', label: 'فعّال', icon: '●', tone: 'positive' },
+  { id: '2', label: 'مستخدم', icon: '●', tone: 'neutral' },
+  { id: '3', label: 'منتهي', icon: '●', tone: 'negative' },
+  { id: '4', label: 'ملغي', icon: '●', tone: 'neutral' },
+];
+
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [StarRatingComponent, DecimalPipe, DatePipe, AdminSurveyEditorComponent],
+  imports: [
+    StarRatingComponent,
+    DecimalPipe,
+    DatePipe,
+    AdminSurveyEditorComponent,
+    ModernSelectComponent,
+  ],
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.scss',
 })
@@ -58,12 +72,16 @@ export class AdminDashboardComponent {
   protected readonly view = signal<DashboardView>('dashboard');
   protected readonly discountSearch = signal('');
   protected readonly discountRows = signal<DiscountCodeRow[]>([]);
+  protected readonly discountTotal = signal(0);
+  protected readonly discountPage = signal(1);
+  protected readonly discountPageSize = 10;
   protected readonly discountLoading = signal(false);
   protected readonly discountExporting = signal(false);
   protected readonly updatingCodeId = signal<number | null>(null);
 
   protected readonly mobileOf = discountCodeMobile;
   protected readonly statusOf = discountCodeStatus;
+  protected readonly discountStatusOptions = DISCOUNT_STATUS_OPTIONS;
 
   protected readonly search = signal('');
   protected readonly starFilter = signal(0);
@@ -87,6 +105,14 @@ export class AdminDashboardComponent {
   );
   protected readonly canPrevPage = computed(() => this.page() > 1);
   protected readonly canNextPage = computed(() => this.page() < this.totalPages());
+
+  protected readonly discountTotalPages = computed(() =>
+    Math.max(1, Math.ceil(this.discountTotal() / this.discountPageSize)),
+  );
+  protected readonly canPrevDiscountPage = computed(() => this.discountPage() > 1);
+  protected readonly canNextDiscountPage = computed(
+    () => this.discountPage() < this.discountTotalPages(),
+  );
   protected readonly averageRating = computed(() => this.analytics()?.averageRating ?? 0);
   protected readonly averageStars = computed(() => Math.round(this.averageRating()));
   protected readonly distribution = computed(() => this.analytics()?.ratingDistribution ?? []);
@@ -259,6 +285,7 @@ export class AdminDashboardComponent {
 
   protected openDiscounts(): void {
     this.view.set('discounts');
+    this.discountPage.set(1);
     void this.loadDiscountCodes();
   }
 
@@ -268,14 +295,36 @@ export class AdminDashboardComponent {
 
   protected onDiscountSearch(event: Event): void {
     this.discountSearch.set((event.target as HTMLInputElement).value);
+    this.discountPage.set(1);
     clearTimeout(this.discountSearchTimer);
     this.discountSearchTimer = setTimeout(() => void this.loadDiscountCodes(), 300);
   }
 
-  protected async setDiscountStatus(row: DiscountCodeRow, rawStatus: number): Promise<void> {
+  protected prevDiscountPage(): void {
+    if (!this.canPrevDiscountPage()) return;
+    this.discountPage.update((value) => value - 1);
+    void this.loadDiscountCodes();
+  }
+
+  protected nextDiscountPage(): void {
+    if (!this.canNextDiscountPage()) return;
+    this.discountPage.update((value) => value + 1);
+    void this.loadDiscountCodes();
+  }
+
+  protected onDiscountStatusChange(row: DiscountCodeRow, value: string | null): void {
+    if (!value || this.updatingCodeId() === row.id) return;
+    const status = Number(value) as DiscountCodeStatusValue;
+    if (![1, 2, 3, 4].includes(status) || status === this.statusSelectValue(row.status)) return;
+    void this.setDiscountStatus(row, status);
+  }
+
+  protected async setDiscountStatus(
+    row: DiscountCodeRow,
+    status: DiscountCodeStatusValue,
+  ): Promise<void> {
     const surveyId = this.surveyId();
-    const status = rawStatus as DiscountCodeStatusValue;
-    if (!surveyId || this.updatingCodeId() || ![1, 2, 3, 4].includes(status)) return;
+    if (!surveyId || this.updatingCodeId()) return;
     this.updatingCodeId.set(row.id);
     try {
       const updated = await this.api.updateDiscountCode(surveyId, row.id, { status });
@@ -297,18 +346,21 @@ export class AdminDashboardComponent {
     return 1;
   }
 
-  protected discountTone(status: DiscountCodeRow['status']): string {
-    const tone = this.statusOf(status).tone;
-    if (tone === 'used' || tone === 'revoked' || tone === 'unknown') return 'neutral';
-    if (tone === 'expired') return 'negative';
-    return 'positive';
+  protected statusSelectId(status: DiscountCodeRow['status']): string {
+    return String(this.statusSelectValue(status));
   }
 
   protected async exportDiscountExcel(): Promise<void> {
-    if (this.discountExporting()) return;
+    const surveyId = this.surveyId();
+    if (!surveyId || this.discountExporting()) return;
     this.discountExporting.set(true);
     try {
-      const rows = this.discountRows();
+      const result = await this.api.searchDiscountCodes(surveyId, {
+        search: this.discountSearch(),
+        page: 1,
+        pageSize: Math.max(this.discountTotal() || 1000, 1000),
+      });
+      const rows = result.items;
       const header = ['mobile', 'name', 'code', 'percent', 'status', 'issuedAt', 'expiresAt'];
       const lines = [
         header.join(','),
@@ -345,9 +397,30 @@ export class AdminDashboardComponent {
     if (!surveyId) return;
     this.discountLoading.set(true);
     try {
-      this.discountRows.set(await this.api.searchDiscountCodes(surveyId, this.discountSearch()));
+      const result = await this.api.searchDiscountCodes(surveyId, {
+        search: this.discountSearch(),
+        page: this.discountPage(),
+        pageSize: this.discountPageSize,
+      });
+
+      const maxPage = Math.max(1, Math.ceil(result.total / this.discountPageSize));
+      if (this.discountPage() > maxPage && result.total > 0) {
+        this.discountPage.set(maxPage);
+        const corrected = await this.api.searchDiscountCodes(surveyId, {
+          search: this.discountSearch(),
+          page: maxPage,
+          pageSize: this.discountPageSize,
+        });
+        this.discountRows.set(corrected.items);
+        this.discountTotal.set(corrected.total);
+        return;
+      }
+
+      this.discountRows.set(result.items);
+      this.discountTotal.set(result.total);
     } catch (error) {
       this.discountRows.set([]);
+      this.discountTotal.set(0);
       this.error.set(errorMessage(error));
     } finally {
       this.discountLoading.set(false);
