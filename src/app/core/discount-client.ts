@@ -1,32 +1,33 @@
 import { Service, inject, signal } from '@angular/core';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
-import { environment } from '../../environments/environment';
 import { SurveyApi } from './survey-api';
-
-const UUID_KEY = `bubble-core.discount.clientUuid.${environment.surveySlug}`;
-const FINGERPRINT_KEY = `bubble-core.discount.fingerprint.${environment.surveySlug}`;
+import { SurveyContext } from './survey-context';
 
 @Service()
 export class DiscountClient {
   private readonly api = inject(SurveyApi);
+  private readonly context = inject(SurveyContext);
 
   readonly fingerprintValue = signal('');
   readonly ready = signal(false);
+  private readyForSlug = '';
 
   clientUuid(): string | null {
     if (typeof localStorage === 'undefined') return null;
-    const value = localStorage.getItem(UUID_KEY)?.trim();
+    const value = localStorage.getItem(this.uuidKey())?.trim();
     return value || null;
   }
 
   /** First visit: fingerprint + durable clientUuid from the survey discount API. */
   async ensureSession(): Promise<string | null> {
+    const slug = this.context.slug();
     const fingerprint = await this.resolveFingerprint();
     this.fingerprintValue.set(fingerprint);
 
     const existing = this.clientUuid();
     if (existing) {
       this.ready.set(true);
+      this.readyForSlug = slug;
       return existing;
     }
 
@@ -34,8 +35,9 @@ export class DiscountClient {
       const session = await this.api.createDiscountSession();
       const uuid = session.clientUuid?.trim();
       if (uuid) {
-        localStorage.setItem(UUID_KEY, uuid);
+        localStorage.setItem(this.uuidKey(), uuid);
         this.ready.set(true);
+        this.readyForSlug = slug;
         return uuid;
       }
     } catch {
@@ -43,8 +45,9 @@ export class DiscountClient {
     }
 
     const localUuid = crypto.randomUUID();
-    localStorage.setItem(UUID_KEY, localUuid);
+    localStorage.setItem(this.uuidKey(), localUuid);
     this.ready.set(true);
+    this.readyForSlug = slug;
     return localUuid;
   }
 
@@ -52,17 +55,31 @@ export class DiscountClient {
     return this.fingerprintValue() || this.syncFingerprintFallback();
   }
 
+  private uuidKey(): string {
+    return `bubble-core.discount.clientUuid.${this.context.slug()}`;
+  }
+
+  private fingerprintKey(): string {
+    return `bubble-core.discount.fingerprint.${this.context.slug()}`;
+  }
+
   private async resolveFingerprint(): Promise<string> {
     if (typeof sessionStorage !== 'undefined') {
-      const cached = sessionStorage.getItem(FINGERPRINT_KEY)?.trim();
+      const cached = sessionStorage.getItem(this.fingerprintKey())?.trim();
       if (cached) return cached;
+    }
+
+    // Reuse a fingerprint already resolved for another channel in this session.
+    if (this.fingerprintValue() && this.readyForSlug && this.readyForSlug !== this.context.slug()) {
+      persistSession(this.fingerprintKey(), this.fingerprintValue());
+      return this.fingerprintValue();
     }
 
     try {
       const agent = await FingerprintJS.load();
       const result = await agent.get();
       if (result.visitorId) {
-        persistSession(FINGERPRINT_KEY, result.visitorId);
+        persistSession(this.fingerprintKey(), result.visitorId);
         return result.visitorId;
       }
     } catch {
@@ -70,7 +87,7 @@ export class DiscountClient {
     }
 
     const manual = await manualFingerprint();
-    persistSession(FINGERPRINT_KEY, manual);
+    persistSession(this.fingerprintKey(), manual);
     return manual;
   }
 

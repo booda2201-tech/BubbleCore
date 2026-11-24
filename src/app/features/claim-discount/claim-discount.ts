@@ -6,6 +6,7 @@ import { DiscountCheck, IssueDiscountResult } from '../../core/api-models';
 import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
+import { SurveyContext } from '../../core/survey-context';
 
 @Component({
   selector: 'app-claim-discount',
@@ -18,6 +19,8 @@ export class ClaimDiscountComponent {
   private readonly discount = inject(DiscountClient);
   private readonly store = inject(FeedbackStore);
   private readonly router = inject(Router);
+  private readonly context = inject(SurveyContext);
+  protected readonly paths = this.context.paths;
 
   protected readonly model = signal({ mobile: '' });
   protected readonly claimForm = form(this.model, (schema) => {
@@ -86,7 +89,7 @@ export class ClaimDiscountComponent {
   }
 
   protected openCodeScreen(): void {
-    this.router.navigate(['/discount-code']);
+    this.router.navigate([this.paths().discountCode]);
   }
 }
 

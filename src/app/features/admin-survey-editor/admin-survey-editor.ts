@@ -1,5 +1,4 @@
 import { Component, effect, inject, input, output, signal, untracked } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import {
   QuestionType,
   SaveOption,
@@ -8,8 +7,9 @@ import {
   SurveyDetails,
   SurveyDiscount,
 } from '../../core/api-models';
-import { displayIcon } from '../../core/models';
+import { ChoiceOption, displayIcon } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
+import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 
 interface EditorOption {
   localId: string;
@@ -64,18 +64,18 @@ const DEFAULT_DISCOUNT: EditorDiscount = {
   validityDays: 30,
 };
 
-const QUESTION_TYPES: readonly { id: QuestionType; label: string }[] = [
-  { id: 'Rating', label: 'تقييم بالنجوم' },
-  { id: 'SingleChoice', label: 'اختيار واحد' },
-  { id: 'MultipleChoice', label: 'اختيارات متعددة' },
-  { id: 'YesNo', label: 'نعم / لا' },
-  { id: 'Text', label: 'نص مفتوح' },
-  { id: 'Number', label: 'رقم' },
+const QUESTION_TYPE_OPTIONS: readonly ChoiceOption[] = [
+  { id: 'Rating', label: 'تقييم بالنجوم', icon: '★', tone: 'neutral' },
+  { id: 'SingleChoice', label: 'اختيار واحد', icon: '◉', tone: 'neutral' },
+  { id: 'MultipleChoice', label: 'اختيارات متعددة', icon: '☑', tone: 'neutral' },
+  { id: 'YesNo', label: 'نعم / لا', icon: '✔', tone: 'positive' },
+  { id: 'Text', label: 'نص مفتوح', icon: '✎', tone: 'neutral' },
+  { id: 'Number', label: 'رقم', icon: '#', tone: 'neutral' },
 ];
 
 @Component({
   selector: 'app-admin-survey-editor',
-  imports: [FormsModule],
+  imports: [ModernSelectComponent],
   templateUrl: './admin-survey-editor.html',
   styleUrl: './admin-survey-editor.scss',
 })
@@ -86,11 +86,17 @@ export class AdminSurveyEditorComponent {
   readonly saved = output<SurveyDetails>();
   readonly cancelled = output<void>();
 
-  protected readonly types = QUESTION_TYPES;
+  protected readonly typeOptions = QUESTION_TYPE_OPTIONS;
   protected readonly draft = signal<EditorDraft | null>(null);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  /** Collapsible form settings (title / discount / branches). */
+  protected readonly settingsOpen = signal(false);
+  /** Accordion: only one question open at a time for easier mobile editing. */
+  protected readonly expandedId = signal<string | null>(null);
+  /** Advanced fields (key / icon / limits) per opened question. */
+  protected readonly advancedOpen = signal(false);
 
   constructor() {
     effect(() => {
@@ -107,6 +113,39 @@ export class AdminSurveyEditorComponent {
 
   protected needsOptions(type: QuestionType): boolean {
     return needsOptions(type);
+  }
+
+  protected typeLabel(type: QuestionType): string {
+    return QUESTION_TYPE_OPTIONS.find((item) => item.id === type)?.label ?? type;
+  }
+
+  protected typeIcon(type: QuestionType): string {
+    return QUESTION_TYPE_OPTIONS.find((item) => item.id === type)?.icon ?? '●';
+  }
+
+  protected toggleSettings(): void {
+    this.settingsOpen.update((value) => !value);
+  }
+
+  protected toggleQuestion(localId: string): void {
+    const next = this.expandedId() === localId ? null : localId;
+    this.expandedId.set(next);
+    this.advancedOpen.set(false);
+    if (next) {
+      queueMicrotask(() => {
+        document
+          .getElementById(`editor-question-${next}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+  }
+
+  protected isExpanded(localId: string): boolean {
+    return this.expandedId() === localId;
+  }
+
+  protected toggleAdvanced(): void {
+    this.advancedOpen.update((value) => !value);
   }
 
   protected onTitle(event: Event): void {
@@ -158,6 +197,9 @@ export class AdminSurveyEditorComponent {
     const questions = this.draftOrThrow().questions;
     const created = emptyQuestion(uniqueKey(questions));
     this.patchDraft({ questions: [...questions, created] });
+    this.expandedId.set(created.localId);
+    this.advancedOpen.set(false);
+    this.settingsOpen.set(false);
     queueMicrotask(() => {
       document
         .getElementById(`editor-question-${created.localId}`)
@@ -166,6 +208,10 @@ export class AdminSurveyEditorComponent {
   }
 
   protected removeQuestion(localId: string): void {
+    if (this.expandedId() === localId) {
+      this.expandedId.set(null);
+      this.advancedOpen.set(false);
+    }
     this.patchDraft({
       questions: this.draftOrThrow().questions.filter((question) => question.localId !== localId),
     });
@@ -203,7 +249,9 @@ export class AdminSurveyEditorComponent {
     });
   }
 
-  protected setType(localId: string, type: QuestionType): void {
+  protected setType(localId: string, typeId: string | null): void {
+    if (!typeId) return;
+    const type = typeId as QuestionType;
     const question = this.draftOrThrow().questions.find((item) => item.localId === localId);
     if (!question || question.type === type) return;
 
@@ -340,8 +388,10 @@ function normalizeType(value: unknown): QuestionType {
   if (typeof value === 'number') return byNumber[value] ?? 'Rating';
 
   const raw = String(value ?? '');
-  const match = QUESTION_TYPES.find((item) => item.id.toLowerCase() === raw.toLowerCase());
-  return match?.id ?? 'Rating';
+  const match = QUESTION_TYPE_OPTIONS.find(
+    (item) => item.id.toLowerCase() === raw.toLowerCase(),
+  );
+  return (match?.id as QuestionType | undefined) ?? 'Rating';
 }
 
 function toDraft(survey: SurveyDetails): EditorDraft {
@@ -482,7 +532,7 @@ function toQuestionPayload(question: EditorQuestion, index: number): SaveQuestio
 
 function validateDraft(draft: EditorDraft): string | null {
   if (!draft.title.trim()) return 'عنوان الفورم مطلوب.';
-  if (!draft.questions.length) return 'أضيفي سؤال واحد على الأقل.';
+  if (!draft.questions.length) return 'أضف سؤال واحد على الأقل.';
 
   const discountError = validateDiscount(draft.discount);
   if (discountError) return discountError;

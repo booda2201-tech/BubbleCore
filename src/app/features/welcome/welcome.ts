@@ -5,8 +5,10 @@ import { AdminAuth } from '../../core/admin-auth';
 import { DiscountCheck, IssueDiscountResult } from '../../core/api-models';
 import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
+import { I18n } from '../../core/i18n';
 import { ChoiceOption } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
+import { SurveyContext } from '../../core/survey-context';
 import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 
 /** Consecutive logo taps required to reveal the admin gate. */
@@ -29,6 +31,10 @@ export class WelcomeComponent {
   private readonly auth = inject(AdminAuth);
   private readonly api = inject(SurveyApi);
   private readonly discount = inject(DiscountClient);
+  private readonly context = inject(SurveyContext);
+  protected readonly i18n = inject(I18n);
+  protected readonly isExpo = this.context.isExpo;
+  protected readonly paths = this.context.paths;
 
   private readonly identityField = viewChild<ElementRef<HTMLInputElement>>('identityField');
 
@@ -60,8 +66,12 @@ export class WelcomeComponent {
     () => this.store.survey()?.discount?.enabled === true,
   );
   protected readonly discountHint = computed(() => discountHintMessage(this.discountCheck()));
+  protected readonly showBranch = computed(
+    () => !this.isExpo() && this.branchOptions().length > 0,
+  );
   protected readonly branchMissing = computed(
-    () => this.branchTouched() && this.branchOptions().length > 0 && !this.selectedBranch(),
+    () =>
+      this.showBranch() && this.branchTouched() && this.branchOptions().length > 0 && !this.selectedBranch(),
   );
 
   constructor() {
@@ -77,10 +87,12 @@ export class WelcomeComponent {
       return;
     }
 
-    if (this.branchOptions().length && !this.selectedBranch()) return;
+    if (this.showBranch() && !this.selectedBranch()) return;
 
     const { name, phone } = this.form.getRawValue();
-    const branchId = this.selectedBranch() ? Number(this.selectedBranch()) : null;
+    // Expo hides the branch picker, but the API still requires a branchId —
+    // use the sole exhibition branch when the UI is suppressed.
+    const branchId = this.resolveBranchId();
 
     this.startBusy.set(true);
     this.startError.set('');
@@ -110,12 +122,12 @@ export class WelcomeComponent {
       phone: phone.trim(),
       branchId: Number.isFinite(branchId) ? branchId : null,
     });
-    this.router.navigate(['/feedback']);
+    this.router.navigate([this.paths().feedback]);
   }
 
   protected openExistingCode(): void {
     if (!this.store.discount()?.code) return;
-    this.router.navigate(['/discount-code']);
+    this.router.navigate([this.paths().discountCode]);
   }
 
   /** Hidden entry point: three quick taps on the logo open the admin gate. */
@@ -171,13 +183,15 @@ export class WelcomeComponent {
       const session = await this.api.login({ emailOrPhone, password });
       this.auth.setSession(session);
 
-      if (!this.auth.hasSurveyAccess()) {
+      // Prefer the channel the staff opened from (store/expo), else any staff survey.
+      const preferredSlug = this.context.slug();
+      if (!this.auth.hasSurveyAccess(preferredSlug) && !this.auth.hasSurveyAccess()) {
         this.auth.lock();
         this.adminError.set('الحساب ده مش مسموح له يدخل لوحة الفورم دي.');
         return;
       }
 
-      const route = this.auth.homeRoute();
+      const route = this.auth.homeRoute(preferredSlug);
       if (route === '/') {
         this.auth.lock();
         this.adminError.set('الحساب ده مش مربوط بدور مسموح (Admin أو Cashier).');
@@ -216,6 +230,8 @@ export class WelcomeComponent {
     try {
       const survey = await this.api.getPublicSurvey();
       this.store.survey.set(survey);
+      // Keep branches loaded even on expo (picker is hidden via showBranch);
+      // the API still requires a branchId when submitting.
       this.branchOptions.set(
         [...(survey.branches ?? [])]
           .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
@@ -268,6 +284,19 @@ export class WelcomeComponent {
       this.discountCheck.set(null);
       this.lastCheckedPhone = '';
     }
+  }
+
+  private resolveBranchId(): number | null {
+    if (this.showBranch()) {
+      const selected = Number(this.selectedBranch());
+      return Number.isFinite(selected) ? selected : null;
+    }
+
+    const fromOptions = Number(this.branchOptions()[0]?.id);
+    if (Number.isFinite(fromOptions)) return fromOptions;
+
+    const fromSurvey = this.store.survey()?.branches?.[0]?.id;
+    return typeof fromSurvey === 'number' ? fromSurvey : null;
   }
 }
 

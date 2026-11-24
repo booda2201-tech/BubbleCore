@@ -5,6 +5,8 @@ import { AuthUser, AuthUserSurvey, LoginResponse } from './api-models';
 const TOKEN_KEY = 'bubblecore.admin.token';
 const USER_KEY = 'bubblecore.admin.user';
 
+const KNOWN_SLUGS = [environment.surveySlug, environment.expoSurveySlug] as const;
+
 @Service()
 export class AdminAuth {
   private readonly tokenState = signal<string | null>(this.readToken());
@@ -20,25 +22,37 @@ export class AdminAuth {
     this.persist(session.token, session.user);
   }
 
-  hasSurveyAccess(slug = environment.surveySlug): boolean {
+  /** Prefer an explicit slug, else the best staff assignment on this account. */
+  hasSurveyAccess(slug?: string): boolean {
     return !!this.surveyAccess(slug);
   }
 
-  surveyAccess(slug = environment.surveySlug): AuthUserSurvey | null {
-    return this.userState()?.surveys.find((survey) => survey.slug === slug) ?? null;
+  surveyAccess(slug?: string): AuthUserSurvey | null {
+    const surveys = this.userState()?.surveys ?? [];
+    if (!surveys.length) return null;
+
+    if (slug) {
+      return surveys.find((survey) => survey.slug === slug) ?? null;
+    }
+
+    return this.resolveStaffSurvey(surveys);
   }
 
-  isAdmin(slug = environment.surveySlug): boolean {
+  isAdmin(slug?: string): boolean {
     return normalizeRole(this.surveyAccess(slug)?.role) === 'admin';
   }
 
-  isCashier(slug = environment.surveySlug): boolean {
+  isCashier(slug?: string): boolean {
     return normalizeRole(this.surveyAccess(slug)?.role) === 'cashier';
   }
 
-  homeRoute(slug = environment.surveySlug): string {
-    if (this.isAdmin(slug)) return '/admin';
-    if (this.isCashier(slug)) return '/cashier';
+  homeRoute(preferredSlug?: string): string {
+    const access = preferredSlug
+      ? this.surveyAccess(preferredSlug) ?? this.surveyAccess()
+      : this.surveyAccess();
+    const role = normalizeRole(access?.role);
+    if (role === 'admin') return '/admin';
+    if (role === 'cashier') return '/cashier';
     return '/';
   }
 
@@ -46,6 +60,18 @@ export class AdminAuth {
     this.tokenState.set(null);
     this.userState.set(null);
     this.persist(null, null);
+  }
+
+  private resolveStaffSurvey(surveys: AuthUserSurvey[]): AuthUserSurvey | null {
+    const staff = surveys.filter((survey) => isStaffRole(survey.role));
+    if (!staff.length) return null;
+
+    for (const slug of KNOWN_SLUGS) {
+      const hit = staff.find((survey) => survey.slug === slug);
+      if (hit) return hit;
+    }
+
+    return staff[0] ?? null;
   }
 
   private persist(token: string | null, user: AuthUser | null): void {
@@ -78,6 +104,11 @@ export class AdminAuth {
       return null;
     }
   }
+}
+
+function isStaffRole(role?: string | null): boolean {
+  const normalized = normalizeRole(role);
+  return normalized === 'admin' || normalized === 'cashier';
 }
 
 function normalizeRole(role?: string | null): string {

@@ -6,6 +6,7 @@ import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
 import { displayIcon } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
+import { SurveyContext } from '../../core/survey-context';
 import { StarRatingComponent } from '../../shared/star-rating/star-rating';
 
 interface AnswerDraft {
@@ -29,6 +30,7 @@ export class FeedbackComponent {
   private readonly api = inject(SurveyApi);
   private readonly discount = inject(DiscountClient);
   private readonly router = inject(Router);
+  private readonly context = inject(SurveyContext);
 
   protected readonly customer = this.store.customer;
   protected readonly survey = this.store.survey;
@@ -260,7 +262,7 @@ export class FeedbackComponent {
       const submitted = await this.api.submitPublicResponse({
         customerName: customer?.name ?? 'زائر',
         phoneNumber: customer?.phone || null,
-        branchId: customer?.branchId,
+        branchId: this.resolveBranchId(customer?.branchId),
         notes: notes || null,
         answers: this.buildAnswers(),
       });
@@ -302,13 +304,13 @@ export class FeedbackComponent {
   protected finish(): void {
     this.store.customer.set(null);
     this.store.discount.set(null);
-    this.router.navigate(['/']);
+    this.router.navigate([this.context.paths().language]);
   }
 
   protected showDiscount(): void {
     if (!this.issuedCode()) return;
     this.store.discount.set(this.discountIssue());
-    this.router.navigate(['/discount-code']);
+    this.router.navigate([this.context.paths().discountCode]);
   }
 
   protected retry(): void {
@@ -420,6 +422,15 @@ export class FeedbackComponent {
       default:
         return false;
     }
+  }
+
+  /** API requires a branch; expo hides the picker so fall back to the survey's sole branch. */
+  private resolveBranchId(fromCustomer: number | null | undefined): number | null {
+    if (typeof fromCustomer === 'number' && Number.isFinite(fromCustomer)) {
+      return fromCustomer;
+    }
+    const sole = this.survey()?.branches?.[0]?.id;
+    return typeof sole === 'number' ? sole : null;
   }
 
   private buildAnswers(): SubmitAnswer[] {

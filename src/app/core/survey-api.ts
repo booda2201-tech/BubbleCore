@@ -24,6 +24,7 @@ import {
   SurveyResponseRow,
   UpdateDiscountCodeRequest,
 } from './api-models';
+import { SurveyContext } from './survey-context';
 
 export class ApiRequestError extends Error {
   constructor(
@@ -39,9 +40,14 @@ export class ApiRequestError extends Error {
 @Service()
 export class SurveyApi {
   private readonly http = inject(HttpClient);
+  private readonly context = inject(SurveyContext);
   private readonly base = environment.apiBaseUrl.endsWith('/')
     ? environment.apiBaseUrl
     : `${environment.apiBaseUrl}/`;
+
+  private activeSlug(): string {
+    return this.context.slug();
+  }
 
   login(body: LoginRequest): Promise<LoginResponse> {
     return this.post<LoginResponse>(this.url('auth', 'login'), body);
@@ -51,29 +57,29 @@ export class SurveyApi {
     return this.get<AuthUser>(this.url('auth', 'me'));
   }
 
-  getPublicSurvey(slug = environment.surveySlug): Promise<PublicSurvey> {
+  getPublicSurvey(slug = this.activeSlug()): Promise<PublicSurvey> {
     return this.get<PublicSurvey>(this.url('public', 'surveys', slug));
   }
 
   submitPublicResponse(
     body: SubmitSurveyResponse,
-    slug = environment.surveySlug,
+    slug = this.activeSlug(),
   ): Promise<SubmitSurveyResult> {
     return this.post<SubmitSurveyResult>(this.url('public', 'surveys', slug, 'responses'), body);
   }
 
-  createDiscountSession(slug = environment.surveySlug): Promise<DiscountSession> {
+  createDiscountSession(slug = this.activeSlug()): Promise<DiscountSession> {
     return this.post<DiscountSession>(this.url('public', 'surveys', slug, 'discount', 'session'), {});
   }
 
-  checkDiscount(mobile: string, slug = environment.surveySlug): Promise<DiscountCheck> {
+  checkDiscount(mobile: string, slug = this.activeSlug()): Promise<DiscountCheck> {
     const params = new HttpParams().set('mobile', mobile);
     return this.get<DiscountCheck>(this.url('public', 'surveys', slug, 'discount', 'check'), params);
   }
 
   issueDiscount(
     body: IssueDiscountRequest,
-    slug = environment.surveySlug,
+    slug = this.activeSlug(),
   ): Promise<IssueDiscountResult> {
     return this.post<IssueDiscountResult>(this.url('public', 'surveys', slug, 'discount', 'issue'), body);
   }

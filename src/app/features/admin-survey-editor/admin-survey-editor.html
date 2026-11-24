@@ -1,373 +1,445 @@
 @if (draft(); as form) {
   <div class="editor">
-    <div class="glass-card q-card">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p class="eyebrow">تعديل الفورم</p>
-          <h2 class="mt-1 text-lg font-bold text-ink-900 sm:text-xl">الأسئلة والاختيارات</h2>
-          <p class="mt-1 max-w-xl text-xs leading-relaxed text-ink-500">
-            أي تغيير هنا بيتحفظ على السيرفر، وفورم العميل بتعرض نفس الأسئلة من غير ما تعدّلي الكود.
-          </p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn-ghost" (click)="cancel()">رجوع للوحة</button>
-          <button type="button" class="btn-primary" [disabled]="saving()" (click)="save()">
-            {{ saving() ? 'جاري الحفظ…' : 'حفظ التغييرات' }}
-          </button>
-        </div>
+    <div class="editor-topbar">
+      <div>
+        <p class="eyebrow">تعديل الفورم</p>
+        <h2 class="editor-title">{{ form.title || 'الأسئلة والاختيارات' }}</h2>
+        <p class="editor-subtitle">اضغط على سؤال عشان تعدّله — باقي الإعدادات تحت لو احتجتها.</p>
       </div>
-
-      @if (error()) {
-        <p class="field-error mt-4">{{ error() }}</p>
-      }
-      @if (success()) {
-        <p class="editor-success mt-4">{{ success() }}</p>
-      }
-
-      <div class="mt-5 grid gap-3 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-          <label class="field-label" for="survey-title">عنوان الفورم</label>
-          <input
-            id="survey-title"
-            class="glass-input"
-            [value]="form.title"
-            (input)="onTitle($event)"
-            placeholder="تقييم تجربتك"
-          />
-        </div>
-        <div class="sm:col-span-2">
-          <label class="field-label" for="survey-description">الوصف</label>
-          <input
-            id="survey-description"
-            class="glass-input"
-            [value]="form.description"
-            (input)="onDescription($event)"
-            placeholder="جملة قصيرة تظهر للعميل"
-          />
-        </div>
-      </div>
-    </div>
-
-    <div class="glass-card q-card mt-4">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 class="text-base font-bold text-ink-900">كود الخصم</h3>
-          <p class="mt-1 max-w-xl text-xs leading-relaxed text-ink-500">
-            بعد التقييم، العميل يقدر ياخد كود خصم بالنسبة والمدة اللي هتحطيها هنا.
-          </p>
-        </div>
-        <label class="editor-check editor-check-inline">
-          <input
-            type="checkbox"
-            [checked]="form.discount.enabled"
-            (change)="onDiscountEnabled($event)"
-          />
-          <span>تفعيل الخصم</span>
-        </label>
-      </div>
-
-      <div
-        class="mt-4 grid gap-3 sm:grid-cols-3"
-        [class.editor-discount-off]="!form.discount.enabled"
-      >
-        <div>
-          <label class="field-label" for="discount-percent">نسبة الخصم (%)</label>
-          <input
-            id="discount-percent"
-            type="number"
-            min="1"
-            max="100"
-            class="glass-input ltr-nums"
-            [value]="form.discount.percent"
-            (input)="onDiscountPercent($event)"
-          />
-        </div>
-        <div>
-          <label class="field-label" for="discount-days">مدة صلاحية الكود (أيام)</label>
-          <input
-            id="discount-days"
-            type="number"
-            min="1"
-            max="365"
-            class="glass-input ltr-nums"
-            [value]="form.discount.validityDays"
-            (input)="onDiscountDays($event)"
-          />
-        </div>
-        <div>
-          <label class="field-label" for="discount-prefix">بادئة الكود</label>
-          <input
-            id="discount-prefix"
-            class="glass-input ltr-nums text-start"
-            [value]="form.discount.codePrefix"
-            (input)="onDiscountPrefix($event)"
-            placeholder="BH-"
-            maxlength="10"
-          />
-          <p class="mt-1 text-[0.7rem] text-ink-400">
-            إنجليزي وبتتنهي بـ - زي BH-
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <div class="glass-card q-card mt-4">
-      <div class="flex items-center justify-between gap-3">
-        <h3 class="text-base font-bold text-ink-900">الفروع</h3>
-        <button type="button" class="btn-ghost !px-4 !py-2 text-sm" (click)="addBranch()">
-          + فرع
-        </button>
-      </div>
-      <div class="mt-4 space-y-2">
-        @for (branch of form.branches; track branch.localId) {
-          <div class="editor-row">
-            <input
-              class="glass-input"
-              [value]="branch.name"
-              (input)="onBranchName(branch.localId, $event)"
-              placeholder="اسم الفرع"
-            />
-            <button
-              type="button"
-              class="editor-icon-btn"
-              (click)="removeBranch(branch.localId)"
-              aria-label="حذف الفرع"
-            >
-              ✕
-            </button>
-          </div>
-        } @empty {
-          <p class="text-sm text-ink-400">لا توجد فروع. أضيفي فرعًا أو سيبي القائمة فاضية.</p>
-        }
-      </div>
-    </div>
-
-    <div class="mt-4 flex items-center justify-between gap-3">
-      <h3 class="text-base font-bold text-ink-900">الأسئلة</h3>
-      <button type="button" class="btn-primary !px-4 !py-2 text-sm" (click)="addQuestion()">
-        + سؤال جديد
+      <button type="button" class="editor-pill editor-pill-primary" (click)="addQuestion()">
+        + سؤال
       </button>
     </div>
 
-    @for (question of draft()!.questions; track question.localId; let i = $index) {
-      <article class="glass-card q-card mt-3" [id]="'editor-question-' + question.localId">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="ltr-nums text-sm font-bold text-orange-500">سؤال {{ i + 1 }}</p>
-          <div class="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              class="editor-icon-btn"
-              [disabled]="i === 0"
-              (click)="moveQuestion(i, -1)"
-              aria-label="تحريك لأعلى"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              class="editor-icon-btn"
-              [disabled]="i === draft()!.questions.length - 1"
-              (click)="moveQuestion(i, 1)"
-              aria-label="تحريك لأسفل"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              class="editor-icon-btn editor-icon-btn-danger"
-              (click)="removeQuestion(question.localId)"
-              aria-label="حذف السؤال"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+    @if (error()) {
+      <p class="field-error mt-3">{{ error() }}</p>
+    }
+    @if (success()) {
+      <p class="editor-success mt-3">{{ success() }}</p>
+    }
 
-        <div class="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label class="field-label">نوع السؤال</label>
-            <select
-              class="glass-input"
-              [name]="'type-' + question.localId"
-              [ngModel]="question.type"
-              (ngModelChange)="setType(question.localId, $event)"
-            >
-              @for (type of types; track type.id) {
-                <option [ngValue]="type.id">{{ type.label }}</option>
-              }
-            </select>
-            @if (question.type === 'Text') {
-              <p class="mt-1 text-[0.7rem] text-ink-400">
-                سؤال نص مفتوح — الإجابة هتتكتب في مربع، مش اختيارات.
-              </p>
-            }
-            @if (question.type === 'MultipleChoice') {
-              <p class="mt-1 text-[0.7rem] text-ink-400">
-                اختيارات متعددة — كل اختيار يظهر لوحده في الفورم واللوحة.
-              </p>
-            }
-          </div>
-          <label class="editor-check">
-            <input
-              type="checkbox"
-              [checked]="question.isRequired"
-              (change)="onRequired(question.localId, $event)"
-            />
-            <span>سؤال مطلوب</span>
-          </label>
-          <div class="sm:col-span-2">
-            <label class="field-label">نص السؤال</label>
-            <input
-              class="glass-input"
-              [value]="question.title"
-              (input)="onQuestionField(question.localId, 'title', $event)"
-              placeholder="اكتب السؤال كما سيظهر للعميل"
-            />
-          </div>
-          <div>
-            <label class="field-label">المفتاح (Key) *</label>
-            <input
-              class="glass-input ltr-nums text-start"
-              [value]="question.key"
-              (input)="onQuestionField(question.localId, 'key', $event)"
-              placeholder="drink_rating"
-            />
-            <p class="mt-1 text-[0.7rem] text-ink-400">
-              معرف ثابت للسؤال في الـ API — إنجليزي وبدون مسافات، ومش يتكرر.
-            </p>
-          </div>
-          <div>
-            <label class="field-label">وصف مختصر</label>
-            <input
-              class="glass-input"
-              [value]="question.subtitle"
-              (input)="onQuestionField(question.localId, 'subtitle', $event)"
-              placeholder="اختياري"
-            />
-          </div>
-          <div>
-            <label class="field-label">أيقونة</label>
-            <div class="editor-row">
-              @if (iconPreview(question.icon); as emoji) {
-                <span class="editor-icon-preview">{{ emoji }}</span>
-              }
-              <input
-                class="glass-input"
-                [value]="question.icon"
-                (input)="onQuestionField(question.localId, 'icon', $event)"
-                placeholder="drink أو 🥤"
-              />
-            </div>
-          </div>
+    <div class="question-list mt-3">
+      @for (question of form.questions; track question.localId; let i = $index) {
+        <article
+          class="question-sheet"
+          [class.is-open]="isExpanded(question.localId)"
+          [id]="'editor-question-' + question.localId"
+        >
+          <button
+            type="button"
+            class="question-summary"
+            (click)="toggleQuestion(question.localId)"
+            [attr.aria-expanded]="isExpanded(question.localId)"
+          >
+            <span class="question-index ltr-nums">{{ i + 1 }}</span>
+            <span class="question-summary-body">
+              <span class="question-summary-title">
+                {{ question.title.trim() || 'سؤال بدون عنوان' }}
+              </span>
+              <span class="question-summary-meta">
+                <span class="question-type-chip">
+                  <span aria-hidden="true">{{ typeIcon(question.type) }}</span>
+                  {{ typeLabel(question.type) }}
+                </span>
+                @if (question.isRequired) {
+                  <span class="question-required-chip">مطلوب</span>
+                }
+                @if (needsOptions(question.type)) {
+                  <span class="question-options-chip ltr-nums">
+                    {{ question.options.length }} اختيار
+                  </span>
+                }
+              </span>
+            </span>
+            <span class="question-edit-cue" aria-hidden="true">
+              <span class="question-edit-label">{{
+                isExpanded(question.localId) ? 'إغلاق' : 'تعديل'
+              }}</span>
+              <span class="question-chevron">▾</span>
+            </span>
+          </button>
 
-          @if (question.type === 'Rating' || question.type === 'Number') {
-            <div>
-              <label class="field-label">من</label>
-              <input
-                type="number"
-                class="glass-input ltr-nums"
-                [value]="question.minValue ?? ''"
-                (input)="onQuestionNumber(question.localId, 'minValue', $event)"
-              />
-            </div>
-            <div>
-              <label class="field-label">إلى</label>
-              <input
-                type="number"
-                class="glass-input ltr-nums"
-                [value]="question.maxValue ?? ''"
-                (input)="onQuestionNumber(question.localId, 'maxValue', $event)"
-              />
-            </div>
-          }
-          @if (question.type === 'Text') {
-            <div>
-              <label class="field-label">أقصى عدد حروف</label>
-              <input
-                type="number"
-                class="glass-input ltr-nums"
-                [value]="question.maxLength ?? 500"
-                (input)="onQuestionNumber(question.localId, 'maxLength', $event)"
-              />
-            </div>
-          }
-        </div>
+          @if (isExpanded(question.localId)) {
+            <div class="question-body">
+              <div class="question-quick-actions">
+                <button
+                  type="button"
+                  class="editor-icon-btn"
+                  [disabled]="i === 0"
+                  (click)="moveQuestion(i, -1)"
+                  aria-label="تحريك لأعلى"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  class="editor-icon-btn"
+                  [disabled]="i === form.questions.length - 1"
+                  (click)="moveQuestion(i, 1)"
+                  aria-label="تحريك لأسفل"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  class="editor-icon-btn editor-icon-btn-danger"
+                  (click)="removeQuestion(question.localId)"
+                  aria-label="حذف السؤال"
+                >
+                  ✕
+                </button>
+                <label class="editor-check editor-check-inline question-required-toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="question.isRequired"
+                    (change)="onRequired(question.localId, $event)"
+                  />
+                  <span>مطلوب</span>
+                </label>
+              </div>
 
-        @if (needsOptions(question.type)) {
-          <div class="mt-5">
-            <div class="flex items-center justify-between gap-3">
-              <h4 class="text-sm font-bold text-ink-800">الاختيارات</h4>
-              <button
-                type="button"
-                class="btn-ghost !px-3 !py-1.5 text-xs"
-                (click)="addOption(question.localId)"
-              >
-                + اختيار
-              </button>
-            </div>
-            <div class="mt-3 space-y-2">
-              @for (option of question.options; track option.localId; let oi = $index) {
-                <div class="editor-option">
+              <div class="question-core">
+                <div>
+                  <label class="field-label">نص السؤال</label>
                   <input
                     class="glass-input"
-                    [value]="option.text"
-                    (input)="onOptionField(question.localId, option.localId, 'text', $event)"
-                    placeholder="نص الاختيار"
+                    [value]="question.title"
+                    (input)="onQuestionField(question.localId, 'title', $event)"
+                    placeholder="اكتب السؤال كما سيظهر للعميل"
                   />
-                  <input
-                    class="glass-input ltr-nums"
-                    [value]="option.value"
-                    (input)="onOptionField(question.localId, option.localId, 'value', $event)"
-                    placeholder="value مثل yes"
+                </div>
+
+                <div class="editor-type-field">
+                  <label class="field-label">نوع السؤال</label>
+                  <app-modern-select
+                    [clearable]="false"
+                    [options]="typeOptions"
+                    [value]="question.type"
+                    (valueChange)="setType(question.localId, $event)"
+                    ariaLabel="نوع السؤال"
+                    placeholder="اختار النوع"
                   />
-                  <input
-                    class="glass-input"
-                    [value]="option.icon"
-                    (input)="onOptionField(question.localId, option.localId, 'icon', $event)"
-                    placeholder="أيقونة"
-                  />
-                  <div class="flex gap-1">
+                </div>
+              </div>
+
+              @if (needsOptions(question.type)) {
+                <div class="options-block">
+                  <div class="editor-section-head">
+                    <h4 class="options-title">الاختيارات</h4>
                     <button
                       type="button"
-                      class="editor-icon-btn"
-                      [disabled]="oi === 0"
-                      (click)="moveOption(question.localId, oi, -1)"
+                      class="editor-pill"
+                      (click)="addOption(question.localId)"
                     >
-                      ↑
+                      + اختيار
                     </button>
-                    <button
-                      type="button"
-                      class="editor-icon-btn"
-                      [disabled]="oi === question.options.length - 1"
-                      (click)="moveOption(question.localId, oi, 1)"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      class="editor-icon-btn editor-icon-btn-danger"
-                      (click)="removeOption(question.localId, option.localId)"
-                    >
-                      ✕
-                    </button>
+                  </div>
+
+                  <div class="options-list">
+                    @for (option of question.options; track option.localId; let oi = $index) {
+                      <div class="option-chip-row">
+                        <span class="option-ord ltr-nums">{{ oi + 1 }}</span>
+                        <input
+                          class="glass-input"
+                          [value]="option.text"
+                          (input)="onOptionField(question.localId, option.localId, 'text', $event)"
+                          placeholder="نص الاختيار"
+                        />
+                        <div class="editor-toolbar">
+                          <button
+                            type="button"
+                            class="editor-icon-btn"
+                            [disabled]="oi === 0"
+                            (click)="moveOption(question.localId, oi, -1)"
+                            aria-label="تحريك الاختيار لأعلى"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            class="editor-icon-btn"
+                            [disabled]="oi === question.options.length - 1"
+                            (click)="moveOption(question.localId, oi, 1)"
+                            aria-label="تحريك الاختيار لأسفل"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            class="editor-icon-btn editor-icon-btn-danger"
+                            (click)="removeOption(question.localId, option.localId)"
+                            aria-label="حذف الاختيار"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <details class="option-advanced">
+                          <summary>قيمة / أيقونة</summary>
+                          <div class="option-advanced-fields">
+                            <input
+                              class="glass-input ltr-nums"
+                              [value]="option.value"
+                              (input)="
+                                onOptionField(question.localId, option.localId, 'value', $event)
+                              "
+                              placeholder="value مثل yes"
+                            />
+                            <input
+                              class="glass-input"
+                              [value]="option.icon"
+                              (input)="
+                                onOptionField(question.localId, option.localId, 'icon', $event)
+                              "
+                              placeholder="أيقونة"
+                            />
+                          </div>
+                        </details>
+                      </div>
+                    }
                   </div>
                 </div>
               }
+
+              <button
+                type="button"
+                class="advanced-toggle"
+                (click)="toggleAdvanced()"
+                [attr.aria-expanded]="advancedOpen()"
+              >
+                {{ advancedOpen() ? 'إخفاء الإعدادات المتقدمة' : 'إعدادات متقدمة' }}
+              </button>
+
+              @if (advancedOpen()) {
+                <div class="advanced-panel">
+                  <div>
+                    <label class="field-label">المفتاح (Key) *</label>
+                    <input
+                      class="glass-input ltr-nums text-start"
+                      [value]="question.key"
+                      (input)="onQuestionField(question.localId, 'key', $event)"
+                      placeholder="drink_rating"
+                    />
+                  </div>
+                  <div>
+                    <label class="field-label">وصف مختصر</label>
+                    <input
+                      class="glass-input"
+                      [value]="question.subtitle"
+                      (input)="onQuestionField(question.localId, 'subtitle', $event)"
+                      placeholder="اختياري"
+                    />
+                  </div>
+                  <div>
+                    <label class="field-label">أيقونة</label>
+                    <div class="editor-row">
+                      @if (iconPreview(question.icon); as emoji) {
+                        <span class="editor-icon-preview">{{ emoji }}</span>
+                      }
+                      <input
+                        class="glass-input"
+                        [value]="question.icon"
+                        (input)="onQuestionField(question.localId, 'icon', $event)"
+                        placeholder="drink أو 🥤"
+                      />
+                    </div>
+                  </div>
+
+                  @if (question.type === 'Rating' || question.type === 'Number') {
+                    <div class="range-row">
+                      <div>
+                        <label class="field-label">من</label>
+                        <input
+                          type="number"
+                          class="glass-input ltr-nums"
+                          [value]="question.minValue ?? ''"
+                          (input)="onQuestionNumber(question.localId, 'minValue', $event)"
+                        />
+                      </div>
+                      <div>
+                        <label class="field-label">إلى</label>
+                        <input
+                          type="number"
+                          class="glass-input ltr-nums"
+                          [value]="question.maxValue ?? ''"
+                          (input)="onQuestionNumber(question.localId, 'maxValue', $event)"
+                        />
+                      </div>
+                    </div>
+                  }
+
+                  @if (question.type === 'Text') {
+                    <div>
+                      <label class="field-label">أقصى عدد حروف</label>
+                      <input
+                        type="number"
+                        class="glass-input ltr-nums"
+                        [value]="question.maxLength ?? 500"
+                        (input)="onQuestionNumber(question.localId, 'maxLength', $event)"
+                      />
+                    </div>
+                  }
+                </div>
+              }
+
+              <button
+                type="button"
+                class="done-btn"
+                (click)="toggleQuestion(question.localId)"
+              >
+                تم — إغلاق السؤال
+              </button>
+            </div>
+          }
+        </article>
+      } @empty {
+        <div class="empty-questions">
+          <p>مفيش أسئلة لسه.</p>
+          <button type="button" class="editor-pill editor-pill-primary" (click)="addQuestion()">
+            أضف أول سؤال
+          </button>
+        </div>
+      }
+    </div>
+
+    <section class="settings-sheet mt-4" [class.is-open]="settingsOpen()">
+      <button
+        type="button"
+        class="settings-toggle"
+        (click)="toggleSettings()"
+        [attr.aria-expanded]="settingsOpen()"
+      >
+        <span>
+          <span class="settings-toggle-label">إعدادات الفورم</span>
+          <span class="settings-toggle-hint">العنوان · الخصم · الفروع</span>
+        </span>
+        <span class="question-chevron" aria-hidden="true">▾</span>
+      </button>
+
+      @if (settingsOpen()) {
+        <div class="settings-body">
+          <div class="settings-block">
+            <h3 class="settings-heading">بيانات الفورم</h3>
+            <div class="editor-fields">
+              <div>
+                <label class="field-label" for="survey-title">عنوان الفورم</label>
+                <input
+                  id="survey-title"
+                  class="glass-input"
+                  [value]="form.title"
+                  (input)="onTitle($event)"
+                  placeholder="تقييم تجربتك"
+                />
+              </div>
+              <div>
+                <label class="field-label" for="survey-description">الوصف</label>
+                <input
+                  id="survey-description"
+                  class="glass-input"
+                  [value]="form.description"
+                  (input)="onDescription($event)"
+                  placeholder="جملة قصيرة تظهر للعميل"
+                />
+              </div>
             </div>
           </div>
-        }
-      </article>
-    } @empty {
-      <div class="glass-card mt-3 p-8 text-center text-sm text-ink-400">
-        مفيش أسئلة. اضغطي «سؤال جديد» عشان تبدئي.
-      </div>
-    }
 
-    <div class="editor-savebar mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-      <button type="button" class="btn-ghost" (click)="cancel()">رجوع للوحة</button>
-      <button type="button" class="btn-ghost" (click)="addQuestion()">+ سؤال جديد</button>
+          <div class="settings-block">
+            <div class="editor-section-head">
+              <div>
+                <h3 class="settings-heading">كود الخصم</h3>
+                <p class="settings-copy">
+                  بعد التقييم، العميل يقدر ياخد كود خصم بالنسبة والمدة اللي هتحطها هنا.
+                </p>
+              </div>
+              <label class="editor-check editor-check-inline">
+                <input
+                  type="checkbox"
+                  [checked]="form.discount.enabled"
+                  (change)="onDiscountEnabled($event)"
+                />
+                <span>تفعيل</span>
+              </label>
+            </div>
+
+            <div
+              class="editor-discount-grid mt-3"
+              [class.editor-discount-off]="!form.discount.enabled"
+            >
+              <div>
+                <label class="field-label" for="discount-percent">نسبة الخصم (%)</label>
+                <input
+                  id="discount-percent"
+                  type="number"
+                  min="1"
+                  max="100"
+                  class="glass-input ltr-nums"
+                  [value]="form.discount.percent"
+                  (input)="onDiscountPercent($event)"
+                />
+              </div>
+              <div>
+                <label class="field-label" for="discount-days">مدة الصلاحية (أيام)</label>
+                <input
+                  id="discount-days"
+                  type="number"
+                  min="1"
+                  max="365"
+                  class="glass-input ltr-nums"
+                  [value]="form.discount.validityDays"
+                  (input)="onDiscountDays($event)"
+                />
+              </div>
+              <div>
+                <label class="field-label" for="discount-prefix">بادئة الكود</label>
+                <input
+                  id="discount-prefix"
+                  class="glass-input ltr-nums text-start"
+                  [value]="form.discount.codePrefix"
+                  (input)="onDiscountPrefix($event)"
+                  placeholder="BH-"
+                  maxlength="10"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-block">
+            <div class="editor-section-head">
+              <h3 class="settings-heading">الفروع</h3>
+              <button type="button" class="editor-pill" (click)="addBranch()">+ فرع</button>
+            </div>
+            <div class="mt-3 space-y-2">
+              @for (branch of form.branches; track branch.localId) {
+                <div class="editor-row">
+                  <input
+                    class="glass-input"
+                    [value]="branch.name"
+                    (input)="onBranchName(branch.localId, $event)"
+                    placeholder="اسم الفرع"
+                  />
+                  <button
+                    type="button"
+                    class="editor-icon-btn"
+                    (click)="removeBranch(branch.localId)"
+                    aria-label="حذف الفرع"
+                  >
+                    ✕
+                  </button>
+                </div>
+              } @empty {
+                <p class="text-sm text-ink-400">مفيش فروع. سيبها فاضية أو أضف فرع.</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </section>
+
+    <div class="editor-savebar">
+      <button type="button" class="btn-ghost" (click)="cancel()">رجوع</button>
+      <button type="button" class="btn-ghost" (click)="addQuestion()">+ سؤال</button>
       <button type="button" class="btn-primary" [disabled]="saving()" (click)="save()">
-        {{ saving() ? 'جاري الحفظ…' : 'حفظ التغييرات' }}
+        {{ saving() ? 'جاري الحفظ…' : 'حفظ' }}
       </button>
     </div>
   </div>

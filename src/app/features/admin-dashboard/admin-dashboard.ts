@@ -275,6 +275,10 @@ export class AdminDashboardComponent {
     return this.questions().filter((question) => question.type !== 'Text');
   }
 
+  protected showDashboard(): void {
+    this.view.set('dashboard');
+  }
+
   protected openEditor(): void {
     this.view.set('editor');
   }
@@ -484,8 +488,13 @@ export class AdminDashboardComponent {
 
     try {
       const surveys = await this.api.getSurveys();
+      const preferredSlug = this.auth.surveyAccess()?.slug ?? environment.surveySlug;
       const survey =
-        surveys.find((item) => item.slug === environment.surveySlug) ?? surveys[0] ?? null;
+        surveys.find((item) => item.slug === preferredSlug) ??
+        surveys.find((item) => item.slug === environment.surveySlug) ??
+        surveys.find((item) => item.slug === environment.expoSurveySlug) ??
+        surveys[0] ??
+        null;
 
       if (!survey) {
         this.error.set('لا توجد فورم تقييم على السيرفر.');

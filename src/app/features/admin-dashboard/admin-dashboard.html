@@ -5,51 +5,66 @@
   ></div>
 
   <div class="animate-rise relative z-10 mx-auto w-full max-w-6xl">
-    <header class="glass-panel admin-header p-4 sm:p-5">
-      <div class="flex items-center gap-3">
-        <img
-          class="admin-logo"
-          src="assets/logo.png"
-          alt="Bubble Hope"
-          width="512"
-          height="315"
-        />
-        <div class="min-w-0 flex-1">
-          <p class="eyebrow">لوحة التحكم</p>
-          <h1 class="font-display truncate text-base font-bold text-ink-900 sm:text-xl">
-            {{ surveyTitle() }}
-          </h1>
+    <header class="glass-panel admin-header p-3.5 sm:p-5">
+      <div class="admin-header-top">
+        <div class="flex min-w-0 items-center gap-3">
+          <img
+            class="admin-logo"
+            src="assets/logo.png"
+            alt="Bubble Hope"
+            width="512"
+            height="315"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="eyebrow">لوحة التحكم</p>
+            <h1 class="font-display truncate text-base font-bold text-ink-900 sm:text-xl">
+              {{ surveyTitle() }}
+            </h1>
+          </div>
         </div>
+        <button type="button" class="admin-logout" (click)="logout()" aria-label="خروج">
+          خروج
+        </button>
       </div>
 
-      <div class="header-actions">
+      <nav class="header-actions" aria-label="إجراءات اللوحة">
         <button
           type="button"
-          class="btn-ghost"
+          class="header-chip"
+          [class.is-active]="view() === 'dashboard'"
+          (click)="showDashboard()"
+          [disabled]="!details()"
+        >
+          التقييمات
+        </button>
+        <button
+          type="button"
+          class="header-chip"
+          [class.is-active]="view() === 'discounts'"
           (click)="view() === 'discounts' ? closeDiscounts() : openDiscounts()"
           [disabled]="!details()"
         >
-          {{ view() === 'discounts' ? 'لوحة التقييمات' : 'أكواد الخصم' }}
+          أكواد الخصم
         </button>
         <button
           type="button"
-          class="btn-ghost"
+          class="header-chip"
+          [class.is-active]="view() === 'editor'"
           (click)="view() === 'editor' ? closeEditor() : openEditor()"
           [disabled]="!details() || view() === 'discounts'"
         >
-          {{ view() === 'editor' ? 'لوحة التقييمات' : 'تعديل الأسئلة' }}
+          تعديل الأسئلة
         </button>
         <button
           type="button"
-          class="btn-primary"
+          class="header-chip header-chip-primary"
           (click)="view() === 'discounts' ? exportDiscountExcel() : exportExcel()"
           [disabled]="
             view() === 'editor' ||
             (view() === 'discounts' ? discountExporting() : !total() || exporting())
           "
         >
-          <span aria-hidden="true">⇩</span>
-          <span>{{
+          {{
             view() === 'discounts'
               ? discountExporting()
                 ? 'جاري التصدير…'
@@ -57,10 +72,9 @@
               : exporting()
                 ? 'جاري التصدير…'
                 : 'تصدير'
-          }}</span>
+          }}
         </button>
-        <button type="button" class="btn-ghost" (click)="logout()">خروج</button>
-      </div>
+      </nav>
     </header>
 
     @if (loading()) {

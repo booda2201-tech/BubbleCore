@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FeedbackStore } from '../../core/feedback-store';
+import { SurveyContext } from '../../core/survey-context';
 
 @Component({
   selector: 'app-discount-code',
@@ -12,6 +13,7 @@ import { FeedbackStore } from '../../core/feedback-store';
 export class DiscountCodeComponent {
   private readonly store = inject(FeedbackStore);
   private readonly router = inject(Router);
+  private readonly context = inject(SurveyContext);
 
   protected readonly discount = this.store.discount;
   protected readonly copied = signal(false);
@@ -40,6 +42,6 @@ export class DiscountCodeComponent {
   protected continueHome(): void {
     this.store.customer.set(null);
     this.store.discount.set(null);
-    this.router.navigate(['/']);
+    this.router.navigate([this.context.paths().language]);
   }
 }
