@@ -7,14 +7,19 @@ import {
   SurveyDetails,
   SurveyDiscount,
 } from '../../core/api-models';
+import { splitLocalized } from '../../core/localized-text';
 import { ChoiceOption, displayIcon } from '../../core/models';
+import { hasArabic, translateArabicToEnglish } from '../../core/translate';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
 import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 
 interface EditorOption {
   localId: string;
   id: number | null;
+  /** Arabic text. */
   text: string;
+  /** English text (optional — falls back to Arabic for English customers). */
+  textEn: string;
   value: string;
   icon: string;
 }
@@ -23,8 +28,12 @@ interface EditorQuestion {
   localId: string;
   id: number | null;
   key: string;
+  /** Arabic title. */
   title: string;
+  /** English title (optional). */
+  titleEn: string;
   subtitle: string;
+  subtitleEn: string;
   type: QuestionType;
   isRequired: boolean;
   icon: string;
@@ -91,6 +100,8 @@ export class AdminSurveyEditorComponent {
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  /** Key of the English field currently waiting for an auto-translation. */
+  protected readonly translatingKey = signal('');
   /** Collapsible form settings (title / discount / branches). */
   protected readonly settingsOpen = signal(false);
   /** Accordion: only one question open at a time for easier mobile editing. */
@@ -227,7 +238,7 @@ export class AdminSurveyEditorComponent {
 
   protected onQuestionField(
     localId: string,
-    field: 'title' | 'subtitle' | 'key' | 'icon',
+    field: 'title' | 'titleEn' | 'subtitle' | 'subtitleEn' | 'key' | 'icon',
     event: Event,
   ): void {
     const value = field === 'key' ? normalizeKey(inputValue(event)) : inputValue(event);
@@ -293,10 +304,60 @@ export class AdminSurveyEditorComponent {
     this.updateQuestion(questionId, { options });
   }
 
+  /** Paste Arabic into an English field and it is translated before landing in the box. */
+  protected onQuestionEnPaste(
+    event: ClipboardEvent,
+    localId: string,
+    field: 'titleEn' | 'subtitleEn',
+  ): void {
+    void this.pasteTranslated(event, `q:${localId}:${field}`, (value) =>
+      this.updateQuestion(localId, { [field]: value }),
+    );
+  }
+
+  protected onOptionEnPaste(event: ClipboardEvent, questionId: string, optionId: string): void {
+    void this.pasteTranslated(event, `o:${optionId}`, (value) => {
+      const question = this.draftOrThrow().questions.find((item) => item.localId === questionId);
+      if (!question) return;
+      this.updateQuestion(questionId, {
+        options: question.options.map((option) =>
+          option.localId === optionId ? { ...option, textEn: value } : option,
+        ),
+      });
+    });
+  }
+
+  private async pasteTranslated(
+    event: ClipboardEvent,
+    busyKey: string,
+    apply: (value: string) => void,
+  ): Promise<void> {
+    const pasted = event.clipboardData?.getData('text') ?? '';
+    if (!hasArabic(pasted)) return; // plain English paste behaves normally
+
+    event.preventDefault();
+    const field = event.target as HTMLInputElement;
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? start;
+    const before = field.value.slice(0, start);
+    const after = field.value.slice(end);
+
+    this.translatingKey.set(busyKey);
+    const translated = await translateArabicToEnglish(pasted.replace(/\s*\n+\s*/g, ' '));
+    this.translatingKey.set('');
+
+    const value = before + (translated ?? pasted) + after;
+    field.value = value;
+    apply(value);
+
+    if (translated === null) {
+      this.error.set('الترجمة التلقائية مش متاحة دلوقتي، اكتب الإنجليزي بنفسك.');
+    }
+  }
   protected onOptionField(
     questionId: string,
     optionId: string,
-    field: 'text' | 'value' | 'icon',
+    field: 'text' | 'textEn' | 'value' | 'icon',
     event: Event,
   ): void {
     const question = this.draftOrThrow().questions.find((item) => item.localId === questionId);
@@ -412,8 +473,10 @@ function toDraft(survey: SurveyDetails): EditorDraft {
         localId: uid(),
         id: question.id,
         key: question.key ?? '',
-        title: question.title,
-        subtitle: question.subtitle ?? '',
+        title: splitLocalized(question.title).ar,
+        titleEn: question.titleEn?.trim() || splitLocalized(question.title).en,
+        subtitle: splitLocalized(question.subtitle).ar,
+        subtitleEn: question.subtitleEn?.trim() || splitLocalized(question.subtitle).en,
         type: normalizeType(question.type),
         isRequired: question.isRequired,
         icon: question.icon ?? '',
@@ -425,7 +488,8 @@ function toDraft(survey: SurveyDetails): EditorDraft {
           .map((option) => ({
             localId: uid(),
             id: option.id,
-            text: option.text,
+            text: splitLocalized(option.text).ar,
+            textEn: option.textEn?.trim() || splitLocalized(option.text).en,
             value: option.value ?? '',
             icon: option.icon ?? '',
           })),
@@ -508,6 +572,7 @@ function toQuestionPayload(question: EditorQuestion, index: number): SaveQuestio
         .map((option, optionIndex) => ({
           ...(option.id && option.id > 0 ? { id: option.id } : {}),
           text: option.text.trim(),
+          textEn: option.textEn.trim() || null,
           value: option.value.trim() || null,
           icon: option.icon.trim() || null,
           order: optionIndex + 1,
@@ -518,7 +583,9 @@ function toQuestionPayload(question: EditorQuestion, index: number): SaveQuestio
     ...(question.id && question.id > 0 ? { id: question.id } : {}),
     key: question.key.trim(),
     title: question.title.trim(),
+    titleEn: question.titleEn.trim() || null,
     subtitle: question.subtitle.trim() || null,
+    subtitleEn: question.subtitleEn.trim() || null,
     type: question.type,
     isRequired: question.isRequired,
     icon: question.icon.trim() || null,
@@ -562,7 +629,9 @@ function emptyQuestion(key = ''): EditorQuestion {
     id: null,
     key,
     title: '',
+    titleEn: '',
     subtitle: '',
+    subtitleEn: '',
     type: 'Rating',
     isRequired: true,
     icon: '',
@@ -585,13 +654,13 @@ function uniqueKey(questions: EditorQuestion[]): string {
 }
 
 function emptyOption(): EditorOption {
-  return { localId: uid(), id: null, text: '', value: '', icon: '' };
+  return { localId: uid(), id: null, text: '', textEn: '', value: '', icon: '' };
 }
 
 function yesNoOptions(): EditorOption[] {
   return [
-    { localId: uid(), id: null, text: 'نعم', value: 'yes', icon: 'check' },
-    { localId: uid(), id: null, text: 'لا', value: 'no', icon: 'x' },
+    { localId: uid(), id: null, text: 'نعم', textEn: 'Yes', value: 'yes', icon: 'check' },
+    { localId: uid(), id: null, text: 'لا', textEn: 'No', value: 'no', icon: 'x' },
   ];
 }
 

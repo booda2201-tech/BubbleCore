@@ -17,8 +17,10 @@ import {
 import { AdminAuth } from '../../core/admin-auth';
 import { discountCodeMobile, discountCodeStatus } from '../../core/discount-code-status';
 import { FeedbackStore } from '../../core/feedback-store';
+import { pickLocalized } from '../../core/localized-text';
 import { ChoiceOption, displayIcon, optionTone } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
+import { SurveyContext } from '../../core/survey-context';
 import { AdminSurveyEditorComponent } from '../admin-survey-editor/admin-survey-editor';
 import { ModernSelectComponent } from '../../shared/modern-select/modern-select';
 import { StarRatingComponent } from '../../shared/star-rating/star-rating';
@@ -50,6 +52,12 @@ export class AdminDashboardComponent {
   private readonly auth = inject(AdminAuth);
   private readonly router = inject(Router);
   private readonly feedback = inject(FeedbackStore);
+  private readonly context = inject(SurveyContext);
+
+  /** Which survey this admin session manages — shown in the header. */
+  protected readonly channelLabel = computed(() =>
+    this.auth.isExpoSession() ? 'المعرض' : 'المتجر',
+  );
 
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
   private discountSearchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -131,8 +139,13 @@ export class AdminDashboardComponent {
     void this.refresh();
   }
 
+  /** Admin always reads the Arabic half of rabic||english strings. */
+  protected ar(raw: string | null | undefined): string {
+    return pickLocalized(raw, 'ar');
+  }
+
   protected kpiTitle(kpi: Kpi): string {
-    return shortenLabel(kpi.title, 40);
+    return shortenLabel(this.ar(kpi.title), 40);
   }
 
   protected averageIcon(icon: string | null): string {
@@ -141,7 +154,7 @@ export class AdminDashboardComponent {
 
   protected averageTitle(item: { questionId: number; title: string }): string {
     const question = this.questions().find((entry) => entry.id === item.questionId);
-    return shortenLabel(question?.subtitle || question?.title || item.title, 32);
+    return shortenLabel(this.ar(question?.subtitle) || this.ar(question?.title) || this.ar(item.title), 32);
   }
 
   protected optionTone(value: string | null): string {
@@ -149,11 +162,11 @@ export class AdminDashboardComponent {
   }
 
   protected breakdownTitle(item: ChoiceBreakdown): string {
-    return shortenLabel(item.title, 36);
+    return shortenLabel(this.ar(item.title), 36);
   }
 
   protected questionLabel(question: QuestionDetails): string {
-    return shortenLabel(question.subtitle || question.title, 40);
+    return shortenLabel(this.ar(question.subtitle) || this.ar(question.title), 40);
   }
 
   protected starLabel(stars: number): string {
@@ -220,8 +233,8 @@ export class AdminDashboardComponent {
     if (!answer) return '—';
     if (answer.ratingValue != null) return String(answer.ratingValue);
     if (answer.numberValue != null) return String(answer.numberValue);
-    if (answer.selectedOptionText) return answer.selectedOptionText;
-    if (answer.selectedOptionTexts?.length) return answer.selectedOptionTexts.join('، ');
+    if (answer.selectedOptionText) return this.ar(answer.selectedOptionText);
+    if (answer.selectedOptionTexts?.length) return answer.selectedOptionTexts.map((text) => this.ar(text)).join('، ');
     if (answer.textValue?.trim()) return answer.textValue.trim();
     return '—';
   }
@@ -478,8 +491,9 @@ export class AdminDashboardComponent {
   }
 
   protected logout(): void {
+    const home = this.context.paths().language;
     this.auth.lock();
-    this.router.navigate(['/']);
+    this.router.navigate([home]);
   }
 
   private async refresh(): Promise<void> {
@@ -488,13 +502,9 @@ export class AdminDashboardComponent {
 
     try {
       const surveys = await this.api.getSurveys();
+      // Strict: an expo session must never fall back to the store survey.
       const preferredSlug = this.auth.surveyAccess()?.slug ?? environment.surveySlug;
-      const survey =
-        surveys.find((item) => item.slug === preferredSlug) ??
-        surveys.find((item) => item.slug === environment.surveySlug) ??
-        surveys.find((item) => item.slug === environment.expoSurveySlug) ??
-        surveys[0] ??
-        null;
+      const survey = surveys.find((item) => item.slug === preferredSlug) ?? null;
 
       if (!survey) {
         this.error.set('لا توجد فورم تقييم على السيرفر.');
@@ -502,7 +512,7 @@ export class AdminDashboardComponent {
       }
 
       this.surveyId.set(survey.id);
-      this.surveyTitle.set(survey.title);
+      this.surveyTitle.set(this.ar(survey.title));
 
       const details = await this.api.getSurvey(survey.id);
       const ensured = await this.ensureNotesQuestion(details);
@@ -535,7 +545,7 @@ export class AdminDashboardComponent {
   private applyDetails(details: SurveyDetails): void {
     this.details.set(details);
     this.surveyId.set(details.id);
-    this.surveyTitle.set(details.title);
+    this.surveyTitle.set(this.ar(details.title));
     this.questions.set([...details.questions].sort((a, b) => a.order - b.order));
   }
 

@@ -5,6 +5,7 @@ import { DiscountCodeRow } from '../../core/api-models';
 import { AdminAuth } from '../../core/admin-auth';
 import { discountCodeMobile, discountCodeStatus } from '../../core/discount-code-status';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
+import { SurveyContext } from '../../core/survey-context';
 
 @Component({
   selector: 'app-cashier',
@@ -16,6 +17,7 @@ export class CashierComponent {
   private readonly api = inject(SurveyApi);
   private readonly auth = inject(AdminAuth);
   private readonly router = inject(Router);
+  private readonly context = inject(SurveyContext);
 
   protected readonly loading = signal(false);
   protected readonly redeemingId = signal<number | null>(null);
@@ -103,8 +105,9 @@ export class CashierComponent {
   }
 
   protected logout(): void {
+    const home = this.context.paths().language;
     this.auth.lock();
-    this.router.navigate(['/']);
+    this.router.navigate([home]);
   }
 }
 

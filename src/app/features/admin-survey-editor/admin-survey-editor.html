@@ -99,14 +99,32 @@
               </div>
 
               <div class="question-core">
-                <div>
-                  <label class="field-label">نص السؤال</label>
-                  <input
-                    class="glass-input"
-                    [value]="question.title"
-                    (input)="onQuestionField(question.localId, 'title', $event)"
-                    placeholder="اكتب السؤال كما سيظهر للعميل"
-                  />
+                <div class="lang-pair">
+                  <div>
+                    <label class="field-label">
+                      <span class="lang-tag">AR</span> نص السؤال بالعربي
+                    </label>
+                    <input
+                      class="glass-input"
+                      [value]="question.title"
+                      (input)="onQuestionField(question.localId, 'title', $event)"
+                      placeholder="اكتب السؤال كما سيظهر للعميل"
+                    />
+                  </div>
+                  <div>
+                    <label class="field-label">
+                      <span class="lang-tag lang-tag-en">EN</span> Question in English
+                    </label>
+                    <input
+                      class="glass-input text-start"
+                      dir="ltr"
+                      [value]="question.titleEn"
+                      (input)="onQuestionField(question.localId, 'titleEn', $event)"
+                      (paste)="onQuestionEnPaste($event, question.localId, 'titleEn')"
+                      [class.is-translating]="translatingKey() === 'q:' + question.localId + ':titleEn'"
+                      placeholder="Shown to customers who pick English"
+                    />
+                  </div>
                 </div>
 
                 <div class="editor-type-field">
@@ -139,12 +157,25 @@
                     @for (option of question.options; track option.localId; let oi = $index) {
                       <div class="option-chip-row">
                         <span class="option-ord ltr-nums">{{ oi + 1 }}</span>
-                        <input
-                          class="glass-input"
-                          [value]="option.text"
-                          (input)="onOptionField(question.localId, option.localId, 'text', $event)"
-                          placeholder="نص الاختيار"
-                        />
+                        <div class="option-texts">
+                          <input
+                            class="glass-input"
+                            [value]="option.text"
+                            (input)="onOptionField(question.localId, option.localId, 'text', $event)"
+                            placeholder="نص الاختيار بالعربي"
+                          />
+                          <input
+                            class="glass-input text-start"
+                            dir="ltr"
+                            [value]="option.textEn"
+                            (input)="
+                              onOptionField(question.localId, option.localId, 'textEn', $event)
+                            "
+                            (paste)="onOptionEnPaste($event, question.localId, option.localId)"
+                            [class.is-translating]="translatingKey() === 'o:' + option.localId"
+                            placeholder="Option in English"
+                          />
+                        </div>
                         <div class="editor-toolbar">
                           <button
                             type="button"
@@ -220,14 +251,32 @@
                       placeholder="drink_rating"
                     />
                   </div>
-                  <div>
-                    <label class="field-label">وصف مختصر</label>
-                    <input
-                      class="glass-input"
-                      [value]="question.subtitle"
-                      (input)="onQuestionField(question.localId, 'subtitle', $event)"
-                      placeholder="اختياري"
-                    />
+                  <div class="lang-pair">
+                    <div>
+                      <label class="field-label">
+                        <span class="lang-tag">AR</span> وصف مختصر بالعربي
+                      </label>
+                      <input
+                        class="glass-input"
+                        [value]="question.subtitle"
+                        (input)="onQuestionField(question.localId, 'subtitle', $event)"
+                        placeholder="اختياري"
+                      />
+                    </div>
+                    <div>
+                      <label class="field-label">
+                        <span class="lang-tag lang-tag-en">EN</span> Short description
+                      </label>
+                      <input
+                        class="glass-input text-start"
+                        dir="ltr"
+                        [value]="question.subtitleEn"
+                        (input)="onQuestionField(question.localId, 'subtitleEn', $event)"
+                        (paste)="onQuestionEnPaste($event, question.localId, 'subtitleEn')"
+                        [class.is-translating]="translatingKey() === 'q:' + question.localId + ':subtitleEn'"
+                        placeholder="Optional"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label class="field-label">أيقونة</label>

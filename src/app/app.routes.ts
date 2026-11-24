@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin-guard';
 import { cashierGuard } from './core/cashier-guard';
-import { channelGuard } from './core/channel-guard';
+import { channelGuard, staffChannelGuard } from './core/channel-guard';
 import { customerGuard } from './core/customer-guard';
 import { discountGuard } from './core/discount-guard';
 
@@ -68,14 +68,14 @@ export const routes: Routes = [
   {
     path: 'admin',
     title: 'BubbleCore — Admin',
-    canActivate: [channelGuard('store'), adminGuard],
+    canActivate: [adminGuard, staffChannelGuard],
     loadComponent: () =>
       import('./features/admin-dashboard/admin-dashboard').then((m) => m.AdminDashboardComponent),
   },
   {
     path: 'cashier',
     title: 'BubbleCore — Cashier',
-    canActivate: [channelGuard('store'), cashierGuard],
+    canActivate: [cashierGuard, staffChannelGuard],
     loadComponent: () => import('./features/cashier/cashier').then((m) => m.CashierComponent),
   },
   { path: '**', redirectTo: '' },

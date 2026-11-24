@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { IssueDiscountResult, PublicQuestion, SubmitAnswer } from '../../core/api-models';
 import { DiscountClient } from '../../core/discount-client';
 import { FeedbackStore } from '../../core/feedback-store';
+import { I18n } from '../../core/i18n';
 import { displayIcon } from '../../core/models';
 import { ApiRequestError, SurveyApi } from '../../core/survey-api';
 import { SurveyContext } from '../../core/survey-context';
@@ -31,6 +32,8 @@ export class FeedbackComponent {
   private readonly discount = inject(DiscountClient);
   private readonly router = inject(Router);
   private readonly context = inject(SurveyContext);
+  protected readonly i18n = inject(I18n);
+  protected readonly arrow = computed(() => (this.i18n.lang() === 'ar' ? '←' : '→'));
 
   protected readonly customer = this.store.customer;
   protected readonly survey = this.store.survey;
@@ -189,7 +192,7 @@ export class FeedbackComponent {
     if (this.isNotesStep()) {
       const notesQuestion = this.notesQuestion();
       if (notesQuestion?.isRequired && !this.notes().trim()) {
-        this.stepHint.set('اكتب ملاحظتك عشان تكمل');
+        this.stepHint.set(this.i18n.t('fb.hint.notes'));
         return;
       }
       this.stepHint.set('');
@@ -201,7 +204,7 @@ export class FeedbackComponent {
     if (!question) return;
 
     if (question.isRequired && !this.isAnswered(question)) {
-      this.stepHint.set('جاوب على السؤال ده عشان تكمل');
+      this.stepHint.set(this.i18n.t('fb.hint.answer'));
       return;
     }
 
@@ -226,7 +229,7 @@ export class FeedbackComponent {
         const question = this.stepQuestions()[i];
         if (question?.isRequired && !this.isAnswered(question)) {
           this.step.set(i);
-          this.stepHint.set('جاوب على الأسئلة المطلوبة بالترتيب');
+          this.stepHint.set(this.i18n.t('fb.hint.order'));
           return;
         }
       }
@@ -243,12 +246,12 @@ export class FeedbackComponent {
       );
       if (firstMissing >= 0) {
         this.step.set(firstMissing);
-        this.stepHint.set('جاوب على الأسئلة المطلوبة أولاً');
+        this.stepHint.set(this.i18n.t('fb.hint.required'));
         return;
       }
       if (this.notesQuestion()?.isRequired && !this.notes().trim()) {
         this.step.set(this.totalSteps() - 1);
-        this.stepHint.set('اكتب ملاحظتك عشان تكمل');
+        this.stepHint.set(this.i18n.t('fb.hint.notes'));
       }
       return;
     }
@@ -307,12 +310,6 @@ export class FeedbackComponent {
     this.router.navigate([this.context.paths().language]);
   }
 
-  protected showDiscount(): void {
-    if (!this.issuedCode()) return;
-    this.store.discount.set(this.discountIssue());
-    this.router.navigate([this.context.paths().discountCode]);
-  }
-
   protected retry(): void {
     void this.loadSurvey();
   }
@@ -353,7 +350,7 @@ export class FeedbackComponent {
     const customer = this.customer();
     const mobile = customer?.phone?.trim();
     if (!mobile) {
-      this.discountError.set('محتاجين رقم الموبايل عشان نطلع كود الخصم.');
+      this.discountError.set(this.i18n.t('fb.err.phone'));
       return;
     }
 

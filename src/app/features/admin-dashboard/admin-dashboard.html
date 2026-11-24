@@ -16,7 +16,7 @@
             height="315"
           />
           <div class="min-w-0 flex-1">
-            <p class="eyebrow">لوحة التحكم</p>
+            <p class="eyebrow">لوحة التحكم · {{ channelLabel() }}</p>
             <h1 class="font-display truncate text-base font-bold text-ink-900 sm:text-xl">
               {{ surveyTitle() }}
             </h1>
@@ -257,7 +257,7 @@
         <div class="kpi-strip mt-3">
           @for (kpi of kpis(); track kpi.key ?? kpi.title) {
             <article class="kpi-mini">
-              <p class="kpi-mini-label" [title]="kpi.title">{{ kpiTitle(kpi) }}</p>
+              <p class="kpi-mini-label" [title]="ar(kpi.title)">{{ kpiTitle(kpi) }}</p>
               <p class="kpi-mini-value ltr-nums">{{ kpi.percentage | number: '1.0-0' }}%</p>
             </article>
           }
@@ -341,7 +341,7 @@
                 @for (item of breakdown.options; track item.optionId) {
                   <li>
                     <div class="mb-1 flex items-center justify-between text-xs">
-                      <span class="text-ink-700">{{ item.text }}</span>
+                      <span class="text-ink-700">{{ ar(item.text) }}</span>
                       <span class="ltr-nums text-ink-400">
                         {{ item.count }} · {{ item.percentage | number: '1.0-0' }}%
                       </span>

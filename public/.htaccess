@@ -1,0 +1,14 @@
+# SPA fallback for Angular — served from https://survey.bubblehope.com/
+# Works for BOTH flows: / (store) and /expo (exhibition).
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Real files/folders (JS chunks, assets, favicon) are served as-is
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else (/expo, /expo/welcome, /admin, ...) -> Angular
+  RewriteRule ^ index.html [L]
+</IfModule>

@@ -4,6 +4,7 @@ import { AuthUser, AuthUserSurvey, LoginResponse } from './api-models';
 
 const TOKEN_KEY = 'bubblecore.admin.token';
 const USER_KEY = 'bubblecore.admin.user';
+const SURVEY_KEY = 'bubblecore.admin.survey';
 
 const KNOWN_SLUGS = [environment.surveySlug, environment.expoSurveySlug] as const;
 
@@ -11,22 +12,39 @@ const KNOWN_SLUGS = [environment.surveySlug, environment.expoSurveySlug] as cons
 export class AdminAuth {
   private readonly tokenState = signal<string | null>(this.readToken());
   private readonly userState = signal<AuthUser | null>(this.readUser());
+  /** Which survey (store / expo) this staff session is working on. */
+  private readonly activeSlugState = signal<string | null>(this.readActiveSlug());
 
   readonly token = this.tokenState.asReadonly();
   readonly user = this.userState.asReadonly();
+  readonly activeSlug = this.activeSlugState.asReadonly();
   readonly isUnlocked = computed(() => !!this.tokenState());
+  readonly isExpoSession = computed(() => this.surveyAccess()?.slug === environment.expoSurveySlug);
 
   setSession(session: LoginResponse): void {
     this.tokenState.set(session.token);
     this.userState.set(session.user);
-    this.persist(session.token, session.user);
+    this.activeSlugState.set(null);
+    this.persist(session.token, session.user, null);
   }
 
-  /** Prefer an explicit slug, else the best staff assignment on this account. */
+  /** Pin the session to one survey so /admin and /cashier never mix store & expo. */
+  useSurvey(slug: string): boolean {
+    const hit = this.staffSurveys().find((survey) => survey.slug === slug);
+    if (!hit) return false;
+    this.activeSlugState.set(hit.slug);
+    this.persistActiveSlug(hit.slug);
+    return true;
+  }
+
   hasSurveyAccess(slug?: string): boolean {
     return !!this.surveyAccess(slug);
   }
 
+  /**
+   * With a slug → access for exactly that survey.
+   * Without → the pinned survey (see useSurvey), else the best staff assignment.
+   */
   surveyAccess(slug?: string): AuthUserSurvey | null {
     const surveys = this.userState()?.surveys ?? [];
     if (!surveys.length) return null;
@@ -35,7 +53,19 @@ export class AdminAuth {
       return surveys.find((survey) => survey.slug === slug) ?? null;
     }
 
-    return this.resolveStaffSurvey(surveys);
+    const staff = this.staffSurveys();
+    const pinned = this.activeSlugState();
+    if (pinned) {
+      const hit = staff.find((survey) => survey.slug === pinned);
+      if (hit) return hit;
+    }
+
+    for (const known of KNOWN_SLUGS) {
+      const hit = staff.find((survey) => survey.slug === known);
+      if (hit) return hit;
+    }
+
+    return staff[0] ?? null;
   }
 
   isAdmin(slug?: string): boolean {
@@ -59,37 +89,43 @@ export class AdminAuth {
   lock(): void {
     this.tokenState.set(null);
     this.userState.set(null);
-    this.persist(null, null);
+    this.activeSlugState.set(null);
+    this.persist(null, null, null);
   }
 
-  private resolveStaffSurvey(surveys: AuthUserSurvey[]): AuthUserSurvey | null {
-    const staff = surveys.filter((survey) => isStaffRole(survey.role));
-    if (!staff.length) return null;
-
-    for (const slug of KNOWN_SLUGS) {
-      const hit = staff.find((survey) => survey.slug === slug);
-      if (hit) return hit;
-    }
-
-    return staff[0] ?? null;
+  private staffSurveys(): AuthUserSurvey[] {
+    return (this.userState()?.surveys ?? []).filter((survey) => isStaffRole(survey.role));
   }
 
-  private persist(token: string | null, user: AuthUser | null): void {
+  private persist(token: string | null, user: AuthUser | null, slug: string | null): void {
     if (typeof sessionStorage === 'undefined') return;
 
     if (token && user) {
       sessionStorage.setItem(TOKEN_KEY, token);
       sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (slug) sessionStorage.setItem(SURVEY_KEY, slug);
+      else sessionStorage.removeItem(SURVEY_KEY);
       return;
     }
 
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(SURVEY_KEY);
+  }
+
+  private persistActiveSlug(slug: string): void {
+    if (typeof sessionStorage === 'undefined') return;
+    sessionStorage.setItem(SURVEY_KEY, slug);
   }
 
   private readToken(): string | null {
     if (typeof sessionStorage === 'undefined') return null;
     return sessionStorage.getItem(TOKEN_KEY);
+  }
+
+  private readActiveSlug(): string | null {
+    if (typeof sessionStorage === 'undefined') return null;
+    return sessionStorage.getItem(SURVEY_KEY);
   }
 
   private readUser(): AuthUser | null {

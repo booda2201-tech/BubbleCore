@@ -23,7 +23,9 @@ export interface PublicSurvey {
   id: number;
   slug: string;
   title: string;
+  titleEn?: string | null;
   description: string | null;
+  descriptionEn?: string | null;
   discount?: PublicSurveyDiscount | null;
   branches: PublicBranch[];
   questions: PublicQuestion[];
@@ -32,6 +34,7 @@ export interface PublicSurvey {
 export interface PublicBranch {
   id: number;
   name: string;
+  nameEn?: string | null;
   order: number;
 }
 
@@ -39,7 +42,9 @@ export interface PublicQuestion {
   id: number;
   key: string | null;
   title: string;
+  titleEn?: string | null;
   subtitle: string | null;
+  subtitleEn?: string | null;
   type: QuestionType;
   isRequired: boolean;
   icon: string | null;
@@ -53,6 +58,7 @@ export interface PublicQuestion {
 export interface PublicOption {
   id: number;
   text: string;
+  textEn?: string | null;
   value: string | null;
   icon: string | null;
   order: number;
@@ -177,7 +183,9 @@ export interface QuestionDetails {
   id: number;
   key: string | null;
   title: string;
+  titleEn?: string | null;
   subtitle: string | null;
+  subtitleEn?: string | null;
   type: QuestionType;
   isRequired: boolean;
   icon: string | null;
@@ -191,6 +199,7 @@ export interface QuestionDetails {
 export interface OptionDetails {
   id: number;
   text: string;
+  textEn?: string | null;
   value: string | null;
   icon: string | null;
   order: number;
@@ -305,7 +314,9 @@ export interface SaveQuestion {
   id?: number | null;
   key: string;
   title: string;
+  titleEn?: string | null;
   subtitle?: string | null;
+  subtitleEn?: string | null;
   type: QuestionType;
   isRequired: boolean;
   icon?: string | null;
@@ -319,6 +330,7 @@ export interface SaveQuestion {
 export interface SaveOption {
   id?: number | null;
   text: string;
+  textEn?: string | null;
   value?: string | null;
   icon?: string | null;
   order: number;

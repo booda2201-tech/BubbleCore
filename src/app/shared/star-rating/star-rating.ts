@@ -1,5 +1,5 @@
-import { Component, computed, input, model, signal } from '@angular/core';
-import { RATING_LABELS } from '../../core/models';
+import { Component, computed, inject, input, model, signal } from '@angular/core';
+import { I18n } from '../../core/i18n';
 
 type StarSize = 'sm' | 'md' | 'lg';
 
@@ -14,13 +14,16 @@ export class StarRatingComponent {
   readonly size = input<StarSize>('md');
   readonly readOnly = input(false);
   readonly showHint = input(false);
-  readonly ariaLabel = input('التقييم');
+  readonly ariaLabel = input('');
+
+  protected readonly i18n = inject(I18n);
+  protected readonly label = computed(() => this.ariaLabel() || this.i18n.t('star.label'));
 
   protected readonly stars = [1, 2, 3, 4, 5];
   protected readonly hovered = signal(0);
 
   protected readonly active = computed(() => this.hovered() || this.value());
-  protected readonly hint = computed(() => RATING_LABELS[this.active()] ?? RATING_LABELS[0]);
+  protected readonly hint = computed(() => this.i18n.t('rating.' + (this.active() >= 0 && this.active() <= 5 ? this.active() : 0)));
 
   protected select(star: number): void {
     if (this.readOnly()) return;

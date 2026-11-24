@@ -46,7 +46,16 @@ export class WelcomeComponent {
     phone: ['', [Validators.required, Validators.pattern(/^[0-9+\s-]{9,15}$/)]],
   });
 
-  protected readonly branchOptions = signal<ChoiceOption[]>([]);
+  protected readonly branchOptions = computed<ChoiceOption[]>(() =>
+    [...(this.store.survey()?.branches ?? [])]
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+      .map((branch) => ({
+        id: String(branch.id),
+        label: this.i18n.pick(branch.name, branch.nameEn),
+        icon: '📍',
+        tone: 'neutral',
+      })),
+  );
   protected readonly selectedBranch = signal<string | null>(null);
   protected readonly branchTouched = signal(false);
 
@@ -183,15 +192,30 @@ export class WelcomeComponent {
       const session = await this.api.login({ emailOrPhone, password });
       this.auth.setSession(session);
 
-      // Prefer the channel the staff opened from (store/expo), else any staff survey.
+      // Staff always land on the survey of the page they logged in from.
+      // Expo is strict (never fall back to the store admin); the store page may
+      // fall back to the account's only staff survey.
       const preferredSlug = this.context.slug();
-      if (!this.auth.hasSurveyAccess(preferredSlug) && !this.auth.hasSurveyAccess()) {
+      let pinned = this.auth.useSurvey(preferredSlug);
+
+      if (!pinned && this.context.isExpo()) {
+        this.auth.lock();
+        this.adminError.set('الحساب ده مش مسموح له يدخل أدمن المعرض.');
+        return;
+      }
+
+      if (!pinned) {
+        const fallback = this.auth.surveyAccess();
+        pinned = !!fallback && this.auth.useSurvey(fallback.slug);
+      }
+
+      if (!pinned) {
         this.auth.lock();
         this.adminError.set('الحساب ده مش مسموح له يدخل لوحة الفورم دي.');
         return;
       }
 
-      const route = this.auth.homeRoute(preferredSlug);
+      const route = this.auth.homeRoute();
       if (route === '/') {
         this.auth.lock();
         this.adminError.set('الحساب ده مش مربوط بدور مسموح (Admin أو Cashier).');
@@ -230,20 +254,8 @@ export class WelcomeComponent {
     try {
       const survey = await this.api.getPublicSurvey();
       this.store.survey.set(survey);
-      // Keep branches loaded even on expo (picker is hidden via showBranch);
-      // the API still requires a branchId when submitting.
-      this.branchOptions.set(
-        [...(survey.branches ?? [])]
-          .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
-          .map((branch) => ({
-            id: String(branch.id),
-            label: branch.name,
-            icon: '📍',
-            tone: 'neutral',
-          })),
-      );
     } catch {
-      this.branchOptions.set([]);
+      this.store.survey.set(null);
     }
   }
 
